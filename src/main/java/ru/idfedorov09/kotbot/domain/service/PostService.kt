@@ -19,4 +19,8 @@ class PostService {
             isDeleted = true,
         )
     }
+
+    fun save(postEntity: PostEntity) = postRepository.save(postEntity)
+
+    fun save(post: PostDTO) = save(post.toEntity()).toDTO()
 }

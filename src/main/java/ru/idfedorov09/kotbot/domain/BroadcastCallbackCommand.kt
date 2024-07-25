@@ -19,6 +19,10 @@ object BroadcastCallbackCommand {
         command = "post_create_cancel",
         description = "Отмена создания поста",
     )
+    val POST_ACTION_CANCEL = CallbackCommand(
+        command = "post_action_cancel",
+        description = "Отмена действия при создании поста (например, отмена изменения текста)"
+    )
     val POST_PREVIEW = CallbackCommand(
         command = "post_preview",
         description = "Предпросмотр поста",
