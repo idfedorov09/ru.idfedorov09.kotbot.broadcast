@@ -16,6 +16,7 @@ import ru.idfedorov09.kotbot.domain.dto.PostDTO
 import ru.idfedorov09.kotbot.domain.service.PostButtonService
 import ru.idfedorov09.kotbot.domain.service.PostService
 import ru.idfedorov09.telegram.bot.base.domain.annotation.Callback
+import ru.idfedorov09.telegram.bot.base.domain.annotation.InputText
 import ru.idfedorov09.telegram.bot.base.domain.dto.CallbackDataDTO
 import ru.idfedorov09.telegram.bot.base.domain.dto.UserDTO
 import ru.idfedorov09.telegram.bot.base.domain.service.CallbackDataService
@@ -56,7 +57,10 @@ open class PostConstructorFetcher(
         const val POST_CHANGE_BUTTON = "post_change_button"
         const val POST_TOGGLE_PREVIEW = "post_toggle_preview"
 
+        const val PC_TEXT_TYPE = "PC_TEXT_TYPE"
+
         const val MAX_BUTTONS_COUNT = 10
+        const val MAX_TEXT_SIZE_WITH_PHOTO = 900
     }
 
     @InjectData
@@ -367,6 +371,34 @@ open class PostConstructorFetcher(
         return post.copy(
             shouldShowWebPreview = !post.shouldShowWebPreview,
         ).save().also { TODO("show console") }
+    }
+
+    @InputText(PC_TEXT_TYPE)
+    fun changeText(
+        update: Update,
+        post: PostDTO,
+    ): PostDTO {
+        var newPost = post
+        val text = update.message.text
+        val chatId = updatesUtil.getChatId(update)!!
+        if (post.imageHash != null && text.length > MAX_TEXT_SIZE_WITH_PHOTO) {
+            messageSenderService.sendMessage(
+                MessageParams(
+                    chatId = chatId,
+                    text =
+                    "Ошибка! Невозможно добавить текст длины" +
+                            " ${text.length} > $MAX_TEXT_SIZE_WITH_PHOTO если приложена фотография. " +
+                            "Измени текст или удали фотографию.",
+                ),
+            )
+        } else {
+            newPost = post.copy(
+                text = text,
+            )
+        }
+        // TODO: change LUAT to default
+        // TODO: show console
+        return newPost
     }
 
     private fun changeButtonCaptionMessage(
