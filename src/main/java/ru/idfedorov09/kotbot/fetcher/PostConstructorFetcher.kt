@@ -54,6 +54,7 @@ open class PostConstructorFetcher(
         const val POST_CHANGE_BUTTON_CALLBACK = "post_change_button_callback"
         const val POST_DELETE_BUTTON = "post_delete_button"
         const val POST_CHANGE_BUTTON = "post_change_button"
+        const val POST_TOGGLE_PREVIEW = "post_toggle_preview"
 
         const val MAX_BUTTONS_COUNT = 10
     }
@@ -357,6 +358,15 @@ open class PostConstructorFetcher(
         return post.copy(
             lastConsoleMessageId = sent.messageId
         ).save()
+    }
+
+    @Callback(POST_TOGGLE_PREVIEW)
+    fun pcToggleWebPreview(
+        post: PostDTO,
+    ): PostDTO {
+        return post.copy(
+            shouldShowWebPreview = !post.shouldShowWebPreview,
+        ).save().also { TODO("show console") }
     }
 
     private fun changeButtonCaptionMessage(

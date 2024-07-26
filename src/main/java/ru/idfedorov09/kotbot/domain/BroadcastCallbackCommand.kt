@@ -59,5 +59,4 @@ object BroadcastCallbackCommand {
         command = "post_toggle_preview",
         description = "Изменение флага превью",
     )
-
 }
