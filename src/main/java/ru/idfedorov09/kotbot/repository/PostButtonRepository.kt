@@ -10,7 +10,9 @@ interface PostButtonRepository<T: PostButtonEntity> : JpaRepository<T, Long> {
         """
             SELECT *
                 FROM button
-                WHERE author_id = :userId
+                WHERE 1 = 1
+                    AND author_id = :userId
+                    AND is_deleted = false
                 ORDER BY last_modify_dttm DESC 
             LIMIT 1
         """,
@@ -27,4 +29,21 @@ interface PostButtonRepository<T: PostButtonEntity> : JpaRepository<T, Long> {
         nativeQuery = true,
     )
     fun updateButton(buttonId: Long)
+
+    @Query(
+        """
+            UPDATE button
+            SET is_deleted = true
+            WHERE button_id = (
+                SELECT button_id
+                FROM button
+                WHERE author_id = :userId
+                  AND is_deleted = false
+                ORDER BY last_modify_dttm DESC
+                LIMIT 1
+            )
+        """,
+        nativeQuery = true,
+    )
+    fun deleteLastModifiedButtonByUserId(userId: Long)
 }

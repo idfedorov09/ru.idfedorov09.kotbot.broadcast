@@ -12,6 +12,7 @@ data class PostButtonDTO(
     val link: String? = null,
     val callbackData: String? = null,
     val author: UserDTO? = null,
+    val isDeleted: Boolean = false,
     val lastModifyTime: LocalDateTime = LocalDateTime.now(ZoneId.of("Europe/Moscow")),
 ): BaseDTO<PostButtonEntity>() {
     override fun toEntity() = PostButtonEntity(
@@ -21,5 +22,6 @@ data class PostButtonDTO(
         callbackData = callbackData,
         author = author?.toEntity(),
         lastModifyTime = lastModifyTime,
+        isDeleted = isDeleted,
     )
 }

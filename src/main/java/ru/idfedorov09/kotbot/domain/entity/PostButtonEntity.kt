@@ -32,6 +32,10 @@ open class PostButtonEntity(
     @JoinColumn(name = "author_id", referencedColumnName = "user_id")
     open var author: UserEntity? = null,
 
+    /** удалена ли кнопка или нет **/
+    @Column(name = "is_deleted")
+    open var isDeleted: Boolean = false,
+
     /** последнее время изменения **/
     @Column(name = "last_modify_dttm")
     open var lastModifyTime: LocalDateTime = LocalDateTime.now(ZoneId.of("Europe/Moscow")),
@@ -43,5 +47,6 @@ open class PostButtonEntity(
         callbackData = callbackData,
         author = author?.toDTO(),
         lastModifyTime = lastModifyTime,
+        isDeleted = isDeleted,
     )
 }

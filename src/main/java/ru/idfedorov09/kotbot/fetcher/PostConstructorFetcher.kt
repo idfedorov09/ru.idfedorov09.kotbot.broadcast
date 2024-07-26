@@ -320,6 +320,16 @@ open class PostConstructorFetcher(
         showChangeButtonConsole(update, post)
     }
 
+    @Callback(POST_DELETE_BUTTON)
+    fun deleteButton(
+        update: Update,
+        post: PostDTO,
+    ) {
+        val userId = updatesUtil.getUserId(update)!!
+        postButtonService.deleteLastModifiedButtonByUserId(userId.toLong())
+        // TODO: show console
+    }
+
     private fun changeButtonCaptionMessage(
         update: Update,
         post: PostDTO,

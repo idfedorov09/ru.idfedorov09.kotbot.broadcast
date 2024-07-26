@@ -23,4 +23,7 @@ class PostButtonService {
 
     fun updateButtonModifyTimeById(buttonId: Long) =
         postButtonRepository.updateButton(buttonId)
+
+    fun deleteLastModifiedButtonByUserId(userId: Long) =
+        postButtonRepository.deleteLastModifiedButtonByUserId(userId)
 }
