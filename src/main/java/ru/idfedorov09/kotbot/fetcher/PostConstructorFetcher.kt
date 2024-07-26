@@ -9,6 +9,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMa
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.DEFAULT_CREATE_POST
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.PC_BUTTON_CAPTION_TYPE
+import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.PC_BUTTON_LINK_TYPE
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.PC_PHOTO_TYPE
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.PC_TEXT_TYPE
 import ru.idfedorov09.kotbot.domain.dto.PostDTO
@@ -46,6 +47,7 @@ open class PostConstructorFetcher(
         const val POST_ADD_BUTTON = "post_add_button"
         const val POST_BUTTON_SETTINGS_CONSOLE = "post_change_button_console"
         const val POST_CHANGE_BUTTON_CAPTION = "post_change_button_caption"
+        const val POST_CHANGE_BUTTON_LINK = "post_change_button_link"
 
         const val MAX_BUTTONS_COUNT = 10
     }
@@ -205,6 +207,34 @@ open class PostConstructorFetcher(
             user = user,
             backToDefaultConsole = false,
         )
+    }
+
+    @Callback(POST_CHANGE_BUTTON_LINK)
+    fun changeButtonLink(
+        update: Update,
+        post: PostDTO,
+        user: UserDTO,
+    ): PostDTO {
+        deletePcConsole(update, post)
+        val chatId = updatesUtil.getChatId(update)
+        val backToBc =
+            CallbackDataDTO(
+                callbackData = POST_BUTTON_SETTINGS_CONSOLE,
+                metaText = "К настройкам кнопки",
+            ).save()
+        val keyboard = listOf(listOf(backToBc.createKeyboard()))
+        val sent =
+            messageSenderService.sendMessage(
+                MessageParams(
+                    chatId = chatId!!,
+                    text = "\uD83D\uDCDD Отправь мне текст с нужной ссылкой",
+                    replyMarkup = createKeyboard(keyboard),
+                ),
+            )
+        user.lastUserActionType = PC_BUTTON_LINK_TYPE
+        return post.copy(
+            lastConsoleMessageId = sent.messageId
+        ).save()
     }
 
     private fun changeButtonCaptionMessage(
