@@ -5,6 +5,7 @@ import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
+import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.PC_TEXT_TYPE
 import ru.idfedorov09.kotbot.domain.dto.PostDTO
 import ru.idfedorov09.kotbot.domain.service.PostService
 import ru.idfedorov09.telegram.bot.base.domain.annotation.Callback
@@ -82,7 +83,7 @@ class PostConstructorFetcher(
                 ),
             )
 
-        user.lastUserActionType = TODO("BC_TEXT_TYPE")
+        user.lastUserActionType = PC_TEXT_TYPE
         return post.copy(
             lastConsoleMessageId = sent.messageId
         ).save()
