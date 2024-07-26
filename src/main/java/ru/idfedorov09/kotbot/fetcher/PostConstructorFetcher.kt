@@ -126,12 +126,18 @@ class PostConstructorFetcher(
 
     @Callback(POST_DELETE_PHOTO)
     fun pcDeletePhoto(update: Update, post: PostDTO, user: UserDTO): PostDTO {
-        val newPost = deletePcConsole(update, post).copy(
+        val newPost = post.copy(
             imageHash = null,
         )
         // TODO: show console
         user.lastUserActionType = DEFAULT_CREATE_POST
         return newPost
+    }
+
+    @Callback(POST_ACTION_CANCEL)
+    fun pcCancelAction(update: Update, post: PostDTO, user: UserDTO) {
+        user.lastUserActionType = DEFAULT_CREATE_POST
+        // TODO: show console
     }
 
     fun deletePcConsole(update: Update, post: PostDTO): PostDTO =
