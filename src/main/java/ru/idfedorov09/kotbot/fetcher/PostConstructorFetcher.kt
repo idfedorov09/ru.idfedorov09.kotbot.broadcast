@@ -1,7 +1,6 @@
 package ru.idfedorov09.kotbot.fetcher
 
 import jakarta.transaction.Transactional
-import org.springframework.boot.autoconfigure.web.servlet.error.BasicErrorController
 import org.springframework.stereotype.Component
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.objects.Update
@@ -13,6 +12,7 @@ import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.PC_BUTTON_LINK_T
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.PC_PHOTO_TYPE
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.PC_TEXT_TYPE
 import ru.idfedorov09.kotbot.domain.dto.PostDTO
+import ru.idfedorov09.kotbot.domain.service.PostButtonService
 import ru.idfedorov09.kotbot.domain.service.PostService
 import ru.idfedorov09.telegram.bot.base.domain.annotation.Callback
 import ru.idfedorov09.telegram.bot.base.domain.dto.CallbackDataDTO
@@ -23,6 +23,8 @@ import ru.idfedorov09.telegram.bot.base.fetchers.DefaultFetcher
 import ru.idfedorov09.telegram.bot.base.util.MessageParams
 import ru.idfedorov09.telegram.bot.base.util.UpdatesUtil
 import ru.mephi.sno.libs.flow.belly.InjectData
+import java.time.LocalDateTime
+import java.time.ZoneId
 
 /**
  * Фетчер, отвечающий за создание поста
@@ -34,7 +36,7 @@ open class PostConstructorFetcher(
     private val messageSenderService: MessageSenderService,
     private val callbackDataService: CallbackDataService,
     private val updatesUtil: UpdatesUtil,
-    basicErrorController: BasicErrorController,
+    private val postButtonService: PostButtonService,
 ): DefaultFetcher() {
 
     private companion object {
@@ -48,6 +50,8 @@ open class PostConstructorFetcher(
         const val POST_BUTTON_SETTINGS_CONSOLE = "post_change_button_console"
         const val POST_CHANGE_BUTTON_CAPTION = "post_change_button_caption"
         const val POST_CHANGE_BUTTON_LINK = "post_change_button_link"
+        const val POST_CHANGE_BUTTON_CALLBACK = "post_change_button_callback"
+        const val POST_DELETE_BUTTON = "post_delete_button"
 
         const val MAX_BUTTONS_COUNT = 10
     }
@@ -232,6 +236,71 @@ open class PostConstructorFetcher(
                 ),
             )
         user.lastUserActionType = PC_BUTTON_LINK_TYPE
+        return post.copy(
+            lastConsoleMessageId = sent.messageId
+        ).save()
+    }
+
+    @Callback(POST_BUTTON_SETTINGS_CONSOLE)
+    fun showChangeButtonConsole(
+        update: Update,
+        post: PostDTO,
+    ): PostDTO {
+        val userId = updatesUtil.getUserId(update)
+        val chatId = updatesUtil.getChatId(update)
+        val button = postButtonService
+            .getLastModifiedButtonByUserId(userId!!.toLong())
+            ?.copy(lastModifyTime = LocalDateTime.now(ZoneId.of("Europe/Moscow")))
+            ?: return post
+        deletePcConsole(update, post)
+
+        val urlTextCode = button.link?.let { "<code>$it</code>" } ?: "пусто"
+        val urlTextLink = button.link?.let { "(<a href='$it'>попробовать перейти</a>)" } ?: ""
+        val caption = button.text?.let { "<code>$it</code>" } ?: "<b>текст не установлен!</b>"
+        val callbackDataText = button.callbackData?.let { "<code>$it</code>" } ?: "<b>коллбэк не установлен</b>"
+
+        val changeButtonCaption =
+            CallbackDataDTO(
+                callbackData = POST_CHANGE_BUTTON_CAPTION,
+                metaText = button.text?.let { "Изменить текст" } ?: "Добавить текст",
+            ).save()
+        val changeButtonLink =
+            CallbackDataDTO(
+                callbackData = POST_CHANGE_BUTTON_LINK,
+                metaText = button.link?.let { "Изменить ссылку" } ?: "Добавить ссылку",
+            ).save()
+        val changeButtonCallback =
+            CallbackDataDTO(
+                callbackData = POST_CHANGE_BUTTON_CALLBACK,
+                metaText = button.callbackData?.let { "Изменить коллбэк" } ?: "Добавить коллбэк",
+            ).save()
+        val removeButton =
+            CallbackDataDTO(
+                callbackData = POST_DELETE_BUTTON,
+                metaText = "Удалить кнопку",
+            ).save()
+        val backToBc =
+            CallbackDataDTO(
+                callbackData = POST_ACTION_CANCEL,
+                metaText = "Назад к конструктору",
+            ).save()
+        val keyboard =
+            listOf(changeButtonCaption, changeButtonLink, changeButtonCallback, removeButton, backToBc)
+                .map { listOf(it.createKeyboard()) }
+        val sent =
+            messageSenderService.sendMessage(
+                MessageParams(
+                    chatId = chatId!!,
+                    text =
+                    "Настройки кнопки:\n\n" +
+                            "Надпись на кнопке: $caption\n" +
+                            "Ссылка: $urlTextCode $urlTextLink\n" +
+                            "Коллбэк: $callbackDataText",
+                    parseMode = ParseMode.HTML,
+                    replyMarkup = createKeyboard(keyboard),
+                ),
+            )
+        // TODO: last user action type
         return post.copy(
             lastConsoleMessageId = sent.messageId
         ).save()
