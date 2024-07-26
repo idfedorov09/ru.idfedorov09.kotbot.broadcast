@@ -38,6 +38,7 @@ class PostConstructorFetcher(
         const val POST_CHANGE_TEXT = "post_change_text"
         const val POST_CHANGE_PHOTO = "post_change_photo"
         const val POST_DELETE_PHOTO = "post_delete_photo"
+        const val POST_PREVIEW = "post_preview"
     }
 
     @InjectData
@@ -138,6 +139,31 @@ class PostConstructorFetcher(
     fun pcCancelAction(update: Update, post: PostDTO, user: UserDTO) {
         user.lastUserActionType = DEFAULT_CREATE_POST
         // TODO: show console
+    }
+
+    @Callback(POST_PREVIEW)
+    // TODO: buttons from context!
+    fun pcPreview(update: Update, post: PostDTO, user: UserDTO): PostDTO {
+        // TODO: post sender service! Send  post
+        val messageText = "<b>Конструктор постов</b>\n\nВыберите дальнейшее действие"
+        val backToPc = CallbackDataDTO(
+            callbackData = POST_ACTION_CANCEL,
+            metaText = "Назад к конструктору",
+        ).save()
+
+        val keyboard = TODO("кнопки из контекста + backToPc")
+        val sent =
+            messageSenderService.sendMessage(
+                MessageParams(
+                    chatId = updatesUtil.getChatId(update)!!,
+                    text = messageText,
+                    parseMode = ParseMode.HTML,
+                    replyMarkup = createKeyboard(keyboard),
+                ),
+            )
+        return post.copy(
+            lastConsoleMessageId = sent.messageId
+        ).save()
     }
 
     fun deletePcConsole(update: Update, post: PostDTO): PostDTO =
