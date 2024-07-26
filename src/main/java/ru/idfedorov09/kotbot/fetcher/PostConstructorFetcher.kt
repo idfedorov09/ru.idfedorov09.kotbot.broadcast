@@ -5,6 +5,7 @@ import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
+import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.DEFAULT_CREATE_POST
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.PC_PHOTO_TYPE
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.PC_TEXT_TYPE
 import ru.idfedorov09.kotbot.domain.dto.PostDTO
@@ -44,8 +45,9 @@ class PostConstructorFetcher(
 
     @Callback(POST_CREATE_CANCEL)
     fun pcCancel(update: Update, post: PostDTO) {
-        deletePcConsole(update, post)
-        postService.deletePost(post)
+        val newPost = deletePcConsole(update, post)
+        postService.deletePost(newPost)
+        // TODO: LUAT?
     }
 
     @Callback(POST_CHANGE_TEXT)
@@ -54,7 +56,7 @@ class PostConstructorFetcher(
         post: PostDTO,
         user: UserDTO,
     ): PostDTO {
-        deletePcConsole(update, post)
+        val newPost = deletePcConsole(update, post)
         val msgText =
             "*Напишите текст уведомления*\\.\n\nПравила оформления:\n" +
                     "<b\\>текст</b\\> \\- жирный текст\n" +
@@ -87,21 +89,21 @@ class PostConstructorFetcher(
             )
 
         user.lastUserActionType = PC_TEXT_TYPE
-        return post.copy(
+        return newPost.copy(
             lastConsoleMessageId = sent.messageId
         ).save()
     }
 
     @Callback(POST_CHANGE_PHOTO)
     fun pcChangePhoto(update: Update, post: PostDTO, user: UserDTO): PostDTO {
-        deletePcConsole(update, post)
+        val newPost = deletePcConsole(update, post)
         val msgText = "Отправьте фотографию, которую вы хотите прикрепить к рассылке"
         val cancelButton = CallbackDataDTO(
             callbackData = POST_ACTION_CANCEL,
             metaText = "Отмена",
         ).save()
         val buttonsList = mutableListOf(listOf(cancelButton.createKeyboard()))
-        if (post.imageHash != null) {
+        if (newPost.imageHash != null) {
             val deletePhoto = CallbackDataDTO(
                 callbackData = POST_DELETE_PHOTO,
                 metaText = "Удалить фото",
@@ -117,26 +119,39 @@ class PostConstructorFetcher(
                 ),
             )
         user.lastUserActionType = PC_PHOTO_TYPE
-        return post.copy(
+        return newPost.copy(
             lastConsoleMessageId = sent.messageId
         ).save()
     }
 
-    fun deletePcConsole(update: Update, post: PostDTO) =
+    @Callback(POST_DELETE_PHOTO)
+    fun pcDeletePhoto(update: Update, post: PostDTO, user: UserDTO): PostDTO {
+        val newPost = deletePcConsole(update, post).copy(
+            imageHash = null,
+        )
+        // TODO: show console
+        user.lastUserActionType = DEFAULT_CREATE_POST
+        return newPost
+    }
+
+    fun deletePcConsole(update: Update, post: PostDTO): PostDTO =
         deletePcConsole(
             chatId = updatesUtil.getChatId(update),
             post,
         )
 
-    fun deletePcConsole(chatId: String?, post: PostDTO) {
-        chatId ?: return
-        post.lastConsoleMessageId ?: return
+    fun deletePcConsole(chatId: String?, post: PostDTO): PostDTO {
+        chatId ?: return post
+        post.lastConsoleMessageId ?: return post
         messageSenderService.deleteMessage(
             MessageParams(
                 chatId = chatId,
                 messageId = post.lastConsoleMessageId,
             )
         )
+        return post.copy(
+            lastConsoleMessageId = null,
+        ).save()
     }
 
     // TODO: show console
