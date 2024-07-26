@@ -7,6 +7,7 @@ import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.DEFAULT_CREATE_POST
+import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.PC_BUTTON_CALLBACK_TYPE
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.PC_BUTTON_CAPTION_TYPE
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.PC_BUTTON_LINK_TYPE
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.PC_PHOTO_TYPE
@@ -328,6 +329,34 @@ open class PostConstructorFetcher(
         val userId = updatesUtil.getUserId(update)!!
         postButtonService.deleteLastModifiedButtonByUserId(userId.toLong())
         // TODO: show console
+    }
+
+    @Callback(POST_CHANGE_BUTTON_CALLBACK)
+    fun changeButtonCallback(
+        update: Update,
+        post: PostDTO,
+        user: UserDTO,
+    ): PostDTO {
+        deletePcConsole(update, post)
+        val chatId = updatesUtil.getChatId(update)!!
+        val backToBc =
+            CallbackDataDTO(
+                callbackData = POST_BUTTON_SETTINGS_CONSOLE,
+                metaText = "К настройкам кнопки",
+            ).save()
+        val keyboard = listOf(listOf(backToBc.createKeyboard()))
+        val sent =
+            messageSenderService.sendMessage(
+                MessageParams(
+                    chatId = chatId,
+                    replyMarkup = createKeyboard(keyboard),
+                    text = "\uD83D\uDCDD Отправь мне текст коллбэка",
+                ),
+            )
+        user.lastUserActionType = PC_BUTTON_CALLBACK_TYPE
+        return post.copy(
+            lastConsoleMessageId = sent.messageId
+        ).save()
     }
 
     private fun changeButtonCaptionMessage(
