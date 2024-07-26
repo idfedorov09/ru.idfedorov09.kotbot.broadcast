@@ -39,6 +39,11 @@ open class PostEntity(
     /** Нужно ли web preview при показе поста**/
     @Column(name = "should_show_web_preview")
     open var shouldShowWebPreview: Boolean = false,
+
+    /** кнопки из поста **/
+    @OneToMany(cascade = [CascadeType.ALL], fetch = FetchType.LAZY, orphanRemoval = true)
+    @JoinColumn(name = "post_id")
+    open var buttons: MutableList<PostButtonEntity> = mutableListOf()
 ) : BaseEntity<PostDTO>() {
     override fun toDTO() = PostDTO(
         id = id,
@@ -50,5 +55,6 @@ open class PostEntity(
         lastConsoleMessageId = lastConsoleMessageId,
         isDeleted = isDeleted,
         shouldShowWebPreview = shouldShowWebPreview,
+        buttons = buttons.map { it.toDTO() }.toMutableList(),
     )
 }

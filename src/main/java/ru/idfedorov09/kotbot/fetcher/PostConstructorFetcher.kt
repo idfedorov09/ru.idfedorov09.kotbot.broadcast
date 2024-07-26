@@ -1,11 +1,14 @@
 package ru.idfedorov09.kotbot.fetcher
 
+import jakarta.transaction.Transactional
+import org.springframework.boot.autoconfigure.web.servlet.error.BasicErrorController
 import org.springframework.stereotype.Component
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.DEFAULT_CREATE_POST
+import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.PC_BUTTON_CAPTION_TYPE
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.PC_PHOTO_TYPE
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.PC_TEXT_TYPE
 import ru.idfedorov09.kotbot.domain.dto.PostDTO
@@ -25,11 +28,12 @@ import ru.mephi.sno.libs.flow.belly.InjectData
  * PC - Post Constructor
  */
 @Component
-class PostConstructorFetcher(
+open class PostConstructorFetcher(
     private val postService: PostService,
     private val messageSenderService: MessageSenderService,
     private val callbackDataService: CallbackDataService,
     private val updatesUtil: UpdatesUtil,
+    basicErrorController: BasicErrorController,
 ): DefaultFetcher() {
 
     private companion object {
@@ -39,6 +43,11 @@ class PostConstructorFetcher(
         const val POST_CHANGE_PHOTO = "post_change_photo"
         const val POST_DELETE_PHOTO = "post_delete_photo"
         const val POST_PREVIEW = "post_preview"
+        const val POST_ADD_BUTTON = "post_add_button"
+        const val POST_BUTTON_SETTINGS_CONSOLE = "post_change_button_console"
+        const val POST_CHANGE_BUTTON_CAPTION = "post_change_button_caption"
+
+        const val MAX_BUTTONS_COUNT = 10
     }
 
     @InjectData
@@ -161,6 +170,70 @@ class PostConstructorFetcher(
                     replyMarkup = createKeyboard(keyboard),
                 ),
             )
+        return post.copy(
+            lastConsoleMessageId = sent.messageId
+        ).save()
+    }
+
+    @Callback(POST_ADD_BUTTON)
+    @Transactional
+    open fun pcAddButton(update: Update, post: PostDTO, user: UserDTO): PostDTO {
+        val chatId = updatesUtil.getChatId(update)
+        if (post.buttons.size >= MAX_BUTTONS_COUNT) {
+            messageSenderService.sendMessage(
+                MessageParams(
+                    chatId = chatId!!,
+                    text = "☠\uFE0F Ты добавил слишком много кнопок. Отредактируй или удали лишние",
+                ),
+            )
+            return post
+        }
+
+        return changeButtonCaptionMessage(
+            update = update,
+            post = post,
+            user = user,
+            backToDefaultConsole = true,
+        )
+    }
+
+    @Callback(POST_CHANGE_BUTTON_CAPTION)
+    fun changeButtonCaptionMessage(update: Update, post: PostDTO, user: UserDTO): PostDTO {
+        return changeButtonCaptionMessage(
+            update = update,
+            post = post,
+            user = user,
+            backToDefaultConsole = false,
+        )
+    }
+
+    private fun changeButtonCaptionMessage(
+        update: Update,
+        post: PostDTO,
+        user: UserDTO,
+        backToDefaultConsole: Boolean = false,
+    ): PostDTO {
+        val backToConsole =
+            CallbackDataDTO(
+                callbackData =
+                if (backToDefaultConsole) {
+                    POST_ACTION_CANCEL
+                } else {
+                    POST_BUTTON_SETTINGS_CONSOLE
+                },
+                metaText = if (backToDefaultConsole) "Отменить создание кнопки" else "К настройкам кнопки",
+            ).save()
+        val keyboard = listOf(listOf(backToConsole.createKeyboard()))
+        deletePcConsole(update, post)
+        val sent =
+            messageSenderService.sendMessage(
+                MessageParams(
+                    chatId = updatesUtil.getChatId(update)!!,
+                    text = "\uD83D\uDCDD Отправь мне текст, который будет отображаться на кнопке",
+                    replyMarkup = createKeyboard(keyboard),
+                ),
+            )
+        user.lastUserActionType = PC_BUTTON_CAPTION_TYPE
         return post.copy(
             lastConsoleMessageId = sent.messageId
         ).save()
