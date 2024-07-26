@@ -5,6 +5,7 @@ import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
+import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.PC_PHOTO_TYPE
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.PC_TEXT_TYPE
 import ru.idfedorov09.kotbot.domain.dto.PostDTO
 import ru.idfedorov09.kotbot.domain.service.PostService
@@ -34,6 +35,8 @@ class PostConstructorFetcher(
         const val POST_CREATE_CANCEL = "post_create_cancel"
         const val POST_ACTION_CANCEL = "post_action_cancel"
         const val POST_CHANGE_TEXT = "post_change_text"
+        const val POST_CHANGE_PHOTO = "post_change_photo"
+        const val POST_DELETE_PHOTO = "post_delete_photo"
     }
 
     @InjectData
@@ -84,6 +87,36 @@ class PostConstructorFetcher(
             )
 
         user.lastUserActionType = PC_TEXT_TYPE
+        return post.copy(
+            lastConsoleMessageId = sent.messageId
+        ).save()
+    }
+
+    @Callback(POST_CHANGE_PHOTO)
+    fun pcChangePhoto(update: Update, post: PostDTO, user: UserDTO): PostDTO {
+        deletePcConsole(update, post)
+        val msgText = "Отправьте фотографию, которую вы хотите прикрепить к рассылке"
+        val cancelButton = CallbackDataDTO(
+            callbackData = POST_ACTION_CANCEL,
+            metaText = "Отмена",
+        ).save()
+        val buttonsList = mutableListOf(listOf(cancelButton.createKeyboard()))
+        if (post.imageHash != null) {
+            val deletePhoto = CallbackDataDTO(
+                callbackData = POST_DELETE_PHOTO,
+                metaText = "Удалить фото",
+            ).save()
+            buttonsList.add(listOf(deletePhoto.createKeyboard()))
+        }
+        val sent =
+            messageSenderService.sendMessage(
+                MessageParams(
+                    chatId = updatesUtil.getChatId(update)!!,
+                    text = msgText,
+                    replyMarkup = createKeyboard(buttonsList),
+                ),
+            )
+        user.lastUserActionType = PC_PHOTO_TYPE
         return post.copy(
             lastConsoleMessageId = sent.messageId
         ).save()
