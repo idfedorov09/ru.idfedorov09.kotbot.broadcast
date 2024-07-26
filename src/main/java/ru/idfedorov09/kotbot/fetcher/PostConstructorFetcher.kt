@@ -52,6 +52,7 @@ open class PostConstructorFetcher(
         const val POST_CHANGE_BUTTON_LINK = "post_change_button_link"
         const val POST_CHANGE_BUTTON_CALLBACK = "post_change_button_callback"
         const val POST_DELETE_BUTTON = "post_delete_button"
+        const val POST_CHANGE_BUTTON = "post_change_button"
 
         const val MAX_BUTTONS_COUNT = 10
     }
@@ -246,13 +247,14 @@ open class PostConstructorFetcher(
         update: Update,
         post: PostDTO,
     ): PostDTO {
+        deletePcConsole(update, post)
+
         val userId = updatesUtil.getUserId(update)
         val chatId = updatesUtil.getChatId(update)
         val button = postButtonService
             .getLastModifiedButtonByUserId(userId!!.toLong())
             ?.copy(lastModifyTime = LocalDateTime.now(ZoneId.of("Europe/Moscow")))
             ?: return post
-        deletePcConsole(update, post)
 
         val urlTextCode = button.link?.let { "<code>$it</code>" } ?: "пусто"
         val urlTextLink = button.link?.let { "(<a href='$it'>попробовать перейти</a>)" } ?: ""
@@ -304,6 +306,18 @@ open class PostConstructorFetcher(
         return post.copy(
             lastConsoleMessageId = sent.messageId
         ).save()
+    }
+
+    // TODO: callback params by name?
+    @Callback(POST_CHANGE_BUTTON)
+    fun editButton(
+        update: Update,
+        post: PostDTO,
+        params: Map<String, String>,
+    ) {
+        val buttonId = params["buttonId"]?.toLongOrNull()!!
+        postButtonService.updateButtonModifyTimeById(buttonId)
+        showChangeButtonConsole(update, post)
     }
 
     private fun changeButtonCaptionMessage(
