@@ -26,4 +26,7 @@ class PostButtonService {
 
     fun deleteLastModifiedButtonByUserId(userId: Long) =
         postButtonRepository.deleteLastModifiedButtonByUserId(userId)
+
+    fun save(buttonEntity: PostButtonEntity) = postButtonRepository.save(buttonEntity)
+    fun save(button: PostButtonDTO) = postButtonRepository.save(button.toEntity()).toDTO()
 }

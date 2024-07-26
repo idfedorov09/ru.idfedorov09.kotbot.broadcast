@@ -9,10 +9,8 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.DEFAULT_CREATE_POST
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.PC_BUTTON_CALLBACK_TYPE
-import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.PC_BUTTON_CAPTION_TYPE
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.PC_BUTTON_LINK_TYPE
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.PC_PHOTO_TYPE
-import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.PC_TEXT_TYPE
 import ru.idfedorov09.kotbot.domain.dto.PostDTO
 import ru.idfedorov09.kotbot.domain.service.PostButtonService
 import ru.idfedorov09.kotbot.domain.service.PostService
@@ -59,9 +57,11 @@ open class PostConstructorFetcher(
         const val POST_TOGGLE_PREVIEW = "post_toggle_preview"
 
         const val PC_TEXT_TYPE = "PC_TEXT_TYPE"
+        const val PC_BUTTON_CAPTION_TYPE = "PC_BUTTON_CAPTION_TYPE"
 
         const val MAX_BUTTONS_COUNT = 10
         const val MAX_TEXT_SIZE_WITH_PHOTO = 900
+        const val MAX_BTN_TEXT_SIZE = 32
     }
 
     @InjectData
@@ -402,6 +402,44 @@ open class PostConstructorFetcher(
         return newPost
     }
 
+    @InputText(PC_BUTTON_CAPTION_TYPE)
+    fun changeButtonCaption(
+        update: Update,
+        post: PostDTO,
+    ) {
+        deletePcConsole(update, post)
+        val caption = update.message.text
+        val chatId = updatesUtil.getChatId(update)!!
+        val userId = updatesUtil.getUserId(update)!!
+        if (caption.length >= MAX_BTN_TEXT_SIZE) {
+            val backToBc =
+                CallbackDataDTO(
+                    callbackData = POST_BUTTON_SETTINGS_CONSOLE,
+                    metaText = "К настройкам кнопки",
+                ).save()
+            val keyboard = listOf(listOf(backToBc.createKeyboard()))
+            messageSenderService.sendMessage(
+                MessageParams(
+                    chatId = chatId,
+                    replyMarkup = createKeyboard(keyboard),
+                    text =
+                    "\uD83E\uDD21 Слишком длинная надпись для кнопки! " +
+                            "Ограничение на длину символов: $MAX_BTN_TEXT_SIZE. Повтори попытку.\n\n" +
+                            "\uD83D\uDCDD Отправь мне текст, который будет отображаться на кнопке",
+                ),
+            )
+            return
+        }
+        val button = postButtonService
+            .getLastModifiedButtonByUserId(userId.toLong())
+            ?.copy(
+                text = caption,
+                lastModifyTime = LocalDateTime.now(ZoneId.of("Europe/Moscow")),
+            )!!
+        postButtonService.save(button)
+        showChangeButtonConsole(update, post)
+    }
+
     private fun changeButtonCaptionMessage(
         update: Update,
         post: PostDTO,
@@ -428,7 +466,7 @@ open class PostConstructorFetcher(
                     replyMarkup = createKeyboard(keyboard),
                 ),
             )
-        user.lastUserActionType = PC_BUTTON_CAPTION_TYPE
+        user.lastUserActionType = BroadcastLastUserActionType.PC_BUTTON_CAPTION_TYPE
         return post.copy(
             lastConsoleMessageId = sent.messageId
         ).save()
