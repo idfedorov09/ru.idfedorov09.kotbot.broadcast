@@ -245,7 +245,7 @@ open class PostConstructorFetcher(
                     replyMarkup = createKeyboard(keyboard),
                 ),
             )
-        user.lastUserActionType = PC_BUTTON_LINK_TYPE
+        user.lastUserActionType = BroadcastLastUserActionType.PC_BUTTON_LINK_TYPE
         return post.copy(
             lastConsoleMessageId = sent.messageId
         ).save()
@@ -445,7 +445,6 @@ open class PostConstructorFetcher(
     @InputText(PC_BUTTON_LINK_TYPE)
     fun changeButtonLink(
         update: Update,
-        user: UserDTO,
         post: PostDTO,
     ) {
         deletePcConsole(update, post)
