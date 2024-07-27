@@ -3,6 +3,7 @@ package ru.idfedorov09.kotbot.fetcher
 import jakarta.transaction.Transactional
 import org.springframework.stereotype.Component
 import org.telegram.telegrambots.meta.api.methods.ParseMode
+import org.telegram.telegrambots.meta.api.objects.InputFile
 import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
@@ -39,7 +40,7 @@ open class PostConstructorFetcher(
     private val postButtonService: PostButtonService,
 ): DefaultFetcher() {
 
-    private companion object {
+    companion object {
         const val POST_CREATE_CANCEL = "post_create_cancel"
         const val POST_ACTION_CANCEL = "post_action_cancel"
         const val POST_CHANGE_TEXT = "post_change_text"
@@ -154,7 +155,7 @@ open class PostConstructorFetcher(
         val newPost = post.copy(
             imageHash = null,
         )
-        // TODO: show console
+        showPcConsole(update, user, post)
         user.lastUserActionType = DEFAULT_CREATE_POST
         return newPost
     }
@@ -162,7 +163,7 @@ open class PostConstructorFetcher(
     @Callback(POST_ACTION_CANCEL)
     fun pcCancelAction(update: Update, post: PostDTO, user: UserDTO) {
         user.lastUserActionType = DEFAULT_CREATE_POST
-        // TODO: show console
+        showPcConsole(update, user, post)
     }
 
     @Callback(POST_PREVIEW)
@@ -331,11 +332,12 @@ open class PostConstructorFetcher(
     @Callback(POST_DELETE_BUTTON)
     fun deleteButton(
         update: Update,
+        user: UserDTO,
         post: PostDTO,
     ) {
         val userId = updatesUtil.getUserId(update)!!
         postButtonService.deleteLastModifiedButtonByUserId(userId.toLong())
-        // TODO: show console
+        showPcConsole(update, user, post)
     }
 
     @Callback(POST_CHANGE_BUTTON_CALLBACK)
@@ -368,16 +370,21 @@ open class PostConstructorFetcher(
 
     @Callback(POST_TOGGLE_PREVIEW)
     fun pcToggleWebPreview(
+        update: Update,
+        user: UserDTO,
         post: PostDTO,
     ): PostDTO {
         return post.copy(
             shouldShowWebPreview = !post.shouldShowWebPreview,
-        ).save().also { TODO("show console") }
+        ).save().also {
+            showPcConsole(update, user, post)
+        }
     }
 
     @InputText(PC_TEXT_TYPE)
     fun changeText(
         update: Update,
+        user: UserDTO,
         post: PostDTO,
     ): PostDTO {
         var newPost = post
@@ -399,7 +406,7 @@ open class PostConstructorFetcher(
             )
         }
         // TODO: change LUAT to default
-        // TODO: show console
+        showPcConsole(update, user, post)
         return newPost
     }
 
@@ -529,7 +536,152 @@ open class PostConstructorFetcher(
         ).save()
     }
 
-    // TODO: show console
+    private fun showPcConsole(
+        update: Update,
+        user: UserDTO,
+        post: PostDTO?,
+    ): PostDTO {
+        val chatId = updatesUtil.getChatId(update)!!
+        var currentPost: PostDTO? = post
+        if (currentPost == null) {
+            currentPost = postService.save(
+                PostDTO(
+                    author = user
+                )
+            )
+            val messageText = "<b>Конструктор потовс</b>\n\nВыберите дальнейшее действие"
+            val newPhoto = CallbackDataDTO(callbackData = POST_CHANGE_PHOTO, metaText = "Добавить фото").save()
+            val addText = CallbackDataDTO(callbackData = POST_CHANGE_TEXT, metaText = "Добавить текст").save()
+            val addButton = CallbackDataDTO(callbackData = POST_ADD_BUTTON, metaText = "Добавить кнопку").save()
+            val webPreviewButton = createWebPreviewToggleButton(currentPost)
+            val cancelButton = CallbackDataDTO(callbackData = POST_CREATE_CANCEL, metaText = "Отмена").save()
+
+            val keyboard =
+                listOfNotNull(newPhoto, addText, addButton, webPreviewButton, cancelButton)
+                    .map { listOf(it.createKeyboard()) }
+            val sent =
+                messageSenderService.sendMessage(
+                    MessageParams(
+                        text = messageText,
+                        parseMode = ParseMode.HTML,
+                        replyMarkup = createKeyboard(keyboard),
+                        chatId = chatId,
+                        disableWebPagePreview = !currentPost.shouldShowWebPreview,
+                    ),
+                )
+            currentPost = currentPost.copy(
+                lastConsoleMessageId = sent.messageId
+            )
+        } else {
+            deletePcConsole(update, currentPost)
+            val photoProp =
+                CallbackDataDTO(
+                    callbackData = POST_CHANGE_PHOTO,
+                    metaText = currentPost.imageHash?.let { "Изменить фото" } ?: "Добавить фото",
+                ).save()
+            val textProp =
+                CallbackDataDTO(
+                    callbackData = POST_CHANGE_TEXT,
+                    metaText = currentPost.text?.let { "Изменить текст" } ?: "Добавить текст",
+                ).save()
+            val addButton = CallbackDataDTO(callbackData = POST_ADD_BUTTON, metaText = "Добавить кнопку").save()
+            val webPreviewButton = createWebPreviewToggleButton(currentPost)
+            val previewButton = CallbackDataDTO(callbackData = POST_PREVIEW, metaText = "Предпросмотр").save()
+            val cancelButton = CallbackDataDTO(callbackData = POST_CREATE_CANCEL, metaText = "Отмена").save()
+
+            val keyboardList =
+                listOfNotNull(
+                    photoProp,
+                    textProp,
+                    addButton,
+                    webPreviewButton,
+                    previewButton,
+                ).toMutableList().apply {
+                    addAll(
+                        postButtonService.findAllValidButtonsForPost(currentPost!!.id!!).map {
+                            CallbackDataDTO(
+                                callbackData = POST_CHANGE_BUTTON + "&buttonId=${it.id}",
+                                metaText = it.text,
+                            ).save()
+                        },
+                    )
+                }
+            keyboardList.add(cancelButton)
+            val keyboard =
+                keyboardList.apply {
+                    if (currentPost!!.imageHash == null && currentPost!!.text == null) {
+                        remove(previewButton)
+                    }
+                    // TODO: если кол-во кнопок >=5 то здесь убрать кнопку 'добавление кнопки'
+                }.map { callbackData ->
+                    listOf(callbackData.createKeyboard())
+                }
+            val text =
+                currentPost.run {
+                    val title = "<b>Конструктор постов</b>\n\n"
+                    val text = text?.let { "Текст:\n${text}\n\n" } ?: ""
+                    val end = "Выберите дальнейшее действие"
+                    title + text + end
+                }
+
+            runCatching {
+                when (currentPost!!.imageHash) {
+                    null ->
+                        messageSenderService.sendMessage(
+                            MessageParams(
+                                chatId = chatId,
+                                text = text,
+                                replyMarkup = createKeyboard(keyboard),
+                                parseMode = ParseMode.HTML,
+                                disableWebPagePreview = !currentPost!!.shouldShowWebPreview,
+                            ),
+                        )
+
+                    else ->
+                        messageSenderService.sendMessage(
+                            MessageParams(
+                                chatId = chatId,
+                                text = text,
+                                parseMode = ParseMode.HTML,
+                                replyMarkup = createKeyboard(keyboard),
+                                photo = InputFile(currentPost!!.imageHash),
+                                disableWebPagePreview = !currentPost!!.shouldShowWebPreview,
+                            ),
+                        )
+                }
+            }.onFailure {
+                val failText =
+                    "\uD83D\uDE4A Ой! При отправке сообщения что-то пошло не так:\n" +
+                            "<pre language=\"error\">${
+                                it.message
+                                    ?.replace("<", "&lt;")
+                                    ?.replace(">", "&gt;")
+                            }</pre>\n\nПопробуй еще раз."
+
+                messageSenderService.sendMessage(
+                    MessageParams(
+                        text = failText,
+                        chatId = chatId,
+                        parseMode = ParseMode.HTML,
+                    ),
+                )
+            }.onSuccess {
+                currentPost = currentPost!!.copy(
+                    lastConsoleMessageId = it.messageId,
+                )
+            }
+        }
+        // TODO: LUAT
+        return currentPost!!.save()
+    }
+
+    private fun createWebPreviewToggleButton(post: PostDTO): CallbackDataDTO? {
+//        if (post.isWeekly) return null
+        val smile = if (post.shouldShowWebPreview) "✅" else "❌"
+        val state = if (post.shouldShowWebPreview) "(вкл)" else "(выкл)"
+        val text = "$smile Превью веб-страницы $state"
+        return CallbackDataDTO(callbackData = POST_TOGGLE_PREVIEW, metaText = text).save()
+    }
 
     private fun CallbackDataDTO.save() = callbackDataService.save(this)!!
     private fun PostDTO.save() = postService.save(this)
