@@ -8,8 +8,6 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMa
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.DEFAULT_CREATE_POST
-import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.PC_BUTTON_CALLBACK_TYPE
-import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.PC_BUTTON_LINK_TYPE
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.PC_PHOTO_TYPE
 import ru.idfedorov09.kotbot.domain.dto.PostButtonDTO
 import ru.idfedorov09.kotbot.domain.dto.PostDTO
@@ -60,6 +58,7 @@ open class PostConstructorFetcher(
         const val PC_TEXT_TYPE = "PC_TEXT_TYPE"
         const val PC_BUTTON_CAPTION_TYPE = "PC_BUTTON_CAPTION_TYPE"
         const val PC_BUTTON_LINK_TYPE = "PC_BUTTON_LINK_TYPE"
+        const val PC_BUTTON_CALLBACK_TYPE = "PC_BUTTON_CALLBACK_TYPE"
 
         const val MAX_BUTTONS_COUNT = 10
         const val MAX_TEXT_SIZE_WITH_PHOTO = 900
@@ -361,7 +360,7 @@ open class PostConstructorFetcher(
                     text = "\uD83D\uDCDD Отправь мне текст коллбэка",
                 ),
             )
-        user.lastUserActionType = PC_BUTTON_CALLBACK_TYPE
+        user.lastUserActionType = BroadcastLastUserActionType.PC_BUTTON_CALLBACK_TYPE
         return post.copy(
             lastConsoleMessageId = sent.messageId
         ).save()
@@ -454,6 +453,24 @@ open class PostConstructorFetcher(
             .getLastModifiedButtonByUserId(userId.toLong())
             ?.copy(
                 link = newUrl,
+                lastModifyTime = LocalDateTime.now(ZoneId.of("Europe/Moscow")),
+            )
+            ?.save()
+        showChangeButtonConsole(update, post)
+    }
+
+    @InputText(PC_BUTTON_CALLBACK_TYPE)
+    fun changeButtonCallback(
+        update: Update,
+        post: PostDTO,
+    ) {
+        deletePcConsole(update, post)
+        val newCallbackData = update.message.text
+        val userId = updatesUtil.getUserId(update)!!
+        postButtonService
+            .getLastModifiedButtonByUserId(userId.toLong())
+            ?.copy(
+                callbackData = newCallbackData,
                 lastModifyTime = LocalDateTime.now(ZoneId.of("Europe/Moscow")),
             )
             ?.save()
