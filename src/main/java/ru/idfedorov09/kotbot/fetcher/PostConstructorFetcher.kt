@@ -11,6 +11,7 @@ import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.DEFAULT_CREATE_P
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.PC_BUTTON_CALLBACK_TYPE
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.PC_BUTTON_LINK_TYPE
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.PC_PHOTO_TYPE
+import ru.idfedorov09.kotbot.domain.dto.PostButtonDTO
 import ru.idfedorov09.kotbot.domain.dto.PostDTO
 import ru.idfedorov09.kotbot.domain.service.PostButtonService
 import ru.idfedorov09.kotbot.domain.service.PostService
@@ -58,6 +59,7 @@ open class PostConstructorFetcher(
 
         const val PC_TEXT_TYPE = "PC_TEXT_TYPE"
         const val PC_BUTTON_CAPTION_TYPE = "PC_BUTTON_CAPTION_TYPE"
+        const val PC_BUTTON_LINK_TYPE = "PC_BUTTON_LINK_TYPE"
 
         const val MAX_BUTTONS_COUNT = 10
         const val MAX_TEXT_SIZE_WITH_PHOTO = 900
@@ -430,13 +432,32 @@ open class PostConstructorFetcher(
             )
             return
         }
-        val button = postButtonService
+        postButtonService
             .getLastModifiedButtonByUserId(userId.toLong())
             ?.copy(
                 text = caption,
                 lastModifyTime = LocalDateTime.now(ZoneId.of("Europe/Moscow")),
-            )!!
-        postButtonService.save(button)
+            )
+            ?.save()
+        showChangeButtonConsole(update, post)
+    }
+
+    @InputText(PC_BUTTON_LINK_TYPE)
+    fun changeButtonLink(
+        update: Update,
+        user: UserDTO,
+        post: PostDTO,
+    ) {
+        deletePcConsole(update, post)
+        val newUrl = update.message.text
+        val userId = updatesUtil.getUserId(update)!!
+        postButtonService
+            .getLastModifiedButtonByUserId(userId.toLong())
+            ?.copy(
+                link = newUrl,
+                lastModifyTime = LocalDateTime.now(ZoneId.of("Europe/Moscow")),
+            )
+            ?.save()
         showChangeButtonConsole(update, post)
     }
 
@@ -496,6 +517,7 @@ open class PostConstructorFetcher(
 
     private fun CallbackDataDTO.save() = callbackDataService.save(this)!!
     private fun PostDTO.save() = postService.save(this)
+    private fun PostButtonDTO.save() = postButtonService.save(this)
 
     private fun createKeyboard(keyboard: List<List<InlineKeyboardButton>>) = InlineKeyboardMarkup().also { it.keyboard = keyboard }
 
