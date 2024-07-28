@@ -13,6 +13,7 @@ import ru.idfedorov09.kotbot.domain.dto.PostButtonDTO
 import ru.idfedorov09.kotbot.domain.dto.PostDTO
 import ru.idfedorov09.kotbot.domain.service.PostButtonService
 import ru.idfedorov09.kotbot.domain.service.PostService
+import ru.idfedorov09.telegram.bot.base.domain.LastUserActionTypes
 import ru.idfedorov09.telegram.bot.base.domain.annotation.Callback
 import ru.idfedorov09.telegram.bot.base.domain.annotation.InputPhoto
 import ru.idfedorov09.telegram.bot.base.domain.annotation.InputText
@@ -71,10 +72,14 @@ open class PostConstructorFetcher(
     private fun doFetch() {}
 
     @Callback(POST_CREATE_CANCEL)
-    fun pcCancel(update: Update, post: PostDTO) {
+    fun pcCancel(
+        update: Update,
+        post: PostDTO,
+        user: UserDTO,
+    ) {
         val newPost = deletePcConsole(update, post)
         postService.deletePost(newPost)
-        // TODO: LUAT?
+        user.lastUserActionType = LastUserActionTypes.DEFAULT
     }
 
     @Callback(POST_CHANGE_TEXT)
@@ -225,7 +230,7 @@ open class PostConstructorFetcher(
     }
 
     @Callback(POST_CHANGE_BUTTON_LINK)
-    fun changeButtonLink(
+    fun changeButtonLinkMessage(
         update: Update,
         post: PostDTO,
         user: UserDTO,
@@ -256,6 +261,7 @@ open class PostConstructorFetcher(
     fun showChangeButtonConsole(
         update: Update,
         post: PostDTO,
+        user: UserDTO,
     ): PostDTO {
         deletePcConsole(update, post)
 
@@ -312,7 +318,7 @@ open class PostConstructorFetcher(
                     replyMarkup = createKeyboard(keyboard),
                 ),
             )
-        // TODO: last user action type
+        user.lastUserActionType = BroadcastLastUserActionType.DEFAULT_CREATE_POST
         return post.copy(
             lastConsoleMessageId = sent.messageId
         ).save()
@@ -323,11 +329,12 @@ open class PostConstructorFetcher(
     fun editButton(
         update: Update,
         post: PostDTO,
+        user: UserDTO,
         params: Map<String, String>,
     ) {
         val buttonId = params["buttonId"]?.toLongOrNull()!!
         postButtonService.updateButtonModifyTimeById(buttonId)
-        showChangeButtonConsole(update, post)
+        showChangeButtonConsole(update, post, user)
     }
 
     @Callback(POST_DELETE_BUTTON)
@@ -342,7 +349,7 @@ open class PostConstructorFetcher(
     }
 
     @Callback(POST_CHANGE_BUTTON_CALLBACK)
-    fun changeButtonCallback(
+    fun changeButtonCallbackMessage(
         update: Update,
         post: PostDTO,
         user: UserDTO,
@@ -406,8 +413,7 @@ open class PostConstructorFetcher(
                 text = text,
             )
         }
-        // TODO: change LUAT to default
-        showPcConsole(update, user, post)
+        showPcConsole(update, user, newPost)
         return newPost
     }
 
@@ -415,6 +421,7 @@ open class PostConstructorFetcher(
     fun changeButtonCaption(
         update: Update,
         post: PostDTO,
+        user: UserDTO,
     ) {
         deletePcConsole(update, post)
         val caption = update.message.text
@@ -446,13 +453,14 @@ open class PostConstructorFetcher(
                 lastModifyTime = LocalDateTime.now(ZoneId.of("Europe/Moscow")),
             )
             ?.save()
-        showChangeButtonConsole(update, post)
+        showChangeButtonConsole(update, post, user)
     }
 
     @InputText(PC_BUTTON_LINK_TYPE)
     fun changeButtonLink(
         update: Update,
         post: PostDTO,
+        user: UserDTO,
     ) {
         deletePcConsole(update, post)
         val newUrl = update.message.text
@@ -464,13 +472,14 @@ open class PostConstructorFetcher(
                 lastModifyTime = LocalDateTime.now(ZoneId.of("Europe/Moscow")),
             )
             ?.save()
-        showChangeButtonConsole(update, post)
+        showChangeButtonConsole(update, post, user)
     }
 
     @InputText(PC_BUTTON_CALLBACK_TYPE)
     fun changeButtonCallback(
         update: Update,
         post: PostDTO,
+        user: UserDTO,
     ) {
         deletePcConsole(update, post)
         val newCallbackData = update.message.text
@@ -482,7 +491,7 @@ open class PostConstructorFetcher(
                 lastModifyTime = LocalDateTime.now(ZoneId.of("Europe/Moscow")),
             )
             ?.save()
-        showChangeButtonConsole(update, post)
+        showChangeButtonConsole(update, post, user)
     }
 
     @InputPhoto(PC_PHOTO_TYPE)
@@ -510,9 +519,8 @@ open class PostConstructorFetcher(
                 imageHash = photoBroadcast
             )
         }
-        showChangeButtonConsole(update, post)
-        // TODO: user LUAT
         deleteUpdateMessage()
+        showChangeButtonConsole(update, post, user)
         return newPost
     }
 
@@ -703,7 +711,7 @@ open class PostConstructorFetcher(
                 )
             }
         }
-        // TODO: LUAT
+        user.lastUserActionType = LastUserActionTypes.DEFAULT
         return currentPost!!.save()
     }
 
