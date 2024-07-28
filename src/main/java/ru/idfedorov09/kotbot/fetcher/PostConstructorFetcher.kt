@@ -9,12 +9,12 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMa
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.DEFAULT_CREATE_POST
-import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.PC_PHOTO_TYPE
 import ru.idfedorov09.kotbot.domain.dto.PostButtonDTO
 import ru.idfedorov09.kotbot.domain.dto.PostDTO
 import ru.idfedorov09.kotbot.domain.service.PostButtonService
 import ru.idfedorov09.kotbot.domain.service.PostService
 import ru.idfedorov09.telegram.bot.base.domain.annotation.Callback
+import ru.idfedorov09.telegram.bot.base.domain.annotation.InputPhoto
 import ru.idfedorov09.telegram.bot.base.domain.annotation.InputText
 import ru.idfedorov09.telegram.bot.base.domain.dto.CallbackDataDTO
 import ru.idfedorov09.telegram.bot.base.domain.dto.UserDTO
@@ -60,9 +60,10 @@ open class PostConstructorFetcher(
         const val PC_BUTTON_CAPTION_TYPE = "PC_BUTTON_CAPTION_TYPE"
         const val PC_BUTTON_LINK_TYPE = "PC_BUTTON_LINK_TYPE"
         const val PC_BUTTON_CALLBACK_TYPE = "PC_BUTTON_CALLBACK_TYPE"
+        const val PC_PHOTO_TYPE = "PC_PHOTO_TYPE"
 
         const val MAX_BUTTONS_COUNT = 10
-        const val MAX_TEXT_SIZE_WITH_PHOTO = 900
+        const val MAX_TEXT_SIZE_WITHOUT_PHOTO = 900
         const val MAX_BTN_TEXT_SIZE = 32
     }
 
@@ -144,7 +145,7 @@ open class PostConstructorFetcher(
                     replyMarkup = createKeyboard(buttonsList),
                 ),
             )
-        user.lastUserActionType = PC_PHOTO_TYPE
+        user.lastUserActionType = BroadcastLastUserActionType.PC_PHOTO_TYPE
         return newPost.copy(
             lastConsoleMessageId = sent.messageId
         ).save()
@@ -390,13 +391,13 @@ open class PostConstructorFetcher(
         var newPost = post
         val text = update.message.text
         val chatId = updatesUtil.getChatId(update)!!
-        if (post.imageHash != null && text.length > MAX_TEXT_SIZE_WITH_PHOTO) {
+        if (post.imageHash != null && text.length > MAX_TEXT_SIZE_WITHOUT_PHOTO) {
             messageSenderService.sendMessage(
                 MessageParams(
                     chatId = chatId,
                     text =
                     "Ошибка! Невозможно добавить текст длины" +
-                            " ${text.length} > $MAX_TEXT_SIZE_WITH_PHOTO если приложена фотография. " +
+                            " ${text.length} > $MAX_TEXT_SIZE_WITHOUT_PHOTO если приложена фотография. " +
                             "Измени текст или удали фотографию.",
                 ),
             )
@@ -482,6 +483,35 @@ open class PostConstructorFetcher(
             )
             ?.save()
         showChangeButtonConsole(update, post)
+    }
+
+    @InputPhoto(PC_PHOTO_TYPE)
+    private fun changePhoto(
+        update: Update,
+        post: PostDTO,
+        user: UserDTO,
+    ) {
+        var newPost = post
+        val chatId = updatesUtil.getChatId(update)!!
+        if ((newPost.text?.length ?: 0) > MAX_TEXT_SIZE_WITHOUT_PHOTO) {
+            messageSenderService.sendMessage(
+                MessageParams(
+                    chatId = chatId,
+                    text =
+                    "Ошибка! Невозможно добавить фотографию, длина текста " +
+                            "${newPost.text?.length ?: 0} > $MAX_TEXT_SIZE_WITHOUT_PHOTO. " +
+                            "Измените текст или не прикладывайте фотографию",
+                ),
+            )
+        } else {
+            val photoBroadcast = update.message.photo.last().fileId
+            newPost = post.copy(
+                imageHash = photoBroadcast
+            )
+        }
+        showChangeButtonConsole(update, post)
+        // TODO: user LUAT
+        deleteUpdateMessage()
     }
 
     private fun changeButtonCaptionMessage(
