@@ -14,6 +14,7 @@ data class PostDTO(
     val lastConsoleMessageId: Int? = null,
     val isDeleted: Boolean = false,
     val shouldShowWebPreview: Boolean = false,
+    val isCurrent: Boolean = false,
     val buttons: MutableList<PostButtonDTO> = mutableListOf(),
 ) : BaseDTO<PostEntity>() {
     override fun toEntity() = PostEntity(
@@ -26,6 +27,7 @@ data class PostDTO(
         lastConsoleMessageId = lastConsoleMessageId,
         isDeleted = isDeleted,
         shouldShowWebPreview = shouldShowWebPreview,
+        isCurrent = isCurrent,
         buttons = buttons.map { it.toEntity() }.toMutableList(),
     )
 }

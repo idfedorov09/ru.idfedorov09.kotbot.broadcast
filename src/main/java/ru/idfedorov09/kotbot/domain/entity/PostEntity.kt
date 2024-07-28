@@ -19,7 +19,7 @@ open class PostEntity(
     @Column(name = "post_image_hash", columnDefinition = "TEXT")
     open var imageHash: String? = null,
     /** id создателя поста **/
-    @ManyToOne(cascade = [(CascadeType.ALL)])
+    @ManyToOne(cascade = [(CascadeType.MERGE)])
     @JoinColumn(name = "post_author_id", referencedColumnName = "user_id")
     open var author: UserEntity? = null,
     /** название поста **/
@@ -39,9 +39,12 @@ open class PostEntity(
     /** Нужно ли web preview при показе поста**/
     @Column(name = "should_show_web_preview")
     open var shouldShowWebPreview: Boolean = false,
+    /** Текущий ли это пост **/
+    @Column(name = "is_current")
+    open var isCurrent: Boolean = false,
 
     /** кнопки из поста **/
-    @OneToMany(cascade = [CascadeType.ALL], fetch = FetchType.LAZY, orphanRemoval = true)
+    @OneToMany(cascade = [CascadeType.ALL], fetch = FetchType.EAGER, orphanRemoval = true)
     @JoinColumn(name = "post_id")
     open var buttons: MutableList<PostButtonEntity> = mutableListOf()
 ) : BaseEntity<PostDTO>() {
@@ -55,6 +58,7 @@ open class PostEntity(
         lastConsoleMessageId = lastConsoleMessageId,
         isDeleted = isDeleted,
         shouldShowWebPreview = shouldShowWebPreview,
+        isCurrent = isCurrent,
         buttons = buttons.map { it.toDTO() }.toMutableList(),
     )
 }

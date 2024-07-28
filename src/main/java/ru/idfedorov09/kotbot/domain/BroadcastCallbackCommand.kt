@@ -59,4 +59,17 @@ object BroadcastCallbackCommand {
         command = "post_toggle_preview",
         description = "Изменение флага превью",
     )
+
+    val BROADCAST_SELECT_POST = CallbackCommand(
+        command = "bc_select_existing_post",
+        description = "Выбор существующего поста",
+    )
+    val BROADCAST_CREATE_NEW_POST = CallbackCommand(
+        command = "bc_create_new_post",
+        description = "Создать новый пост",
+    )
+    val BROADCAST_CREATE_CANCEL = CallbackCommand(
+        command = "bc_create_cancel",
+        description = "Отмена создания рассылки",
+    )
 }

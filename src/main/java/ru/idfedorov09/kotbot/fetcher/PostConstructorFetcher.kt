@@ -1,18 +1,16 @@
 package ru.idfedorov09.kotbot.fetcher
 
-import jakarta.transaction.Transactional
 import org.springframework.stereotype.Component
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.objects.InputFile
 import org.telegram.telegrambots.meta.api.objects.Update
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.DEFAULT_CREATE_POST
 import ru.idfedorov09.kotbot.domain.dto.PostButtonDTO
 import ru.idfedorov09.kotbot.domain.dto.PostDTO
 import ru.idfedorov09.kotbot.domain.service.PostButtonService
 import ru.idfedorov09.kotbot.domain.service.PostService
+import ru.idfedorov09.kotbot.fetcher.BroadcastConstructorFetcher.Companion.BROADCAST_CREATE_NEW_POST
 import ru.idfedorov09.telegram.bot.base.domain.LastUserActionTypes
 import ru.idfedorov09.telegram.bot.base.domain.annotation.Callback
 import ru.idfedorov09.telegram.bot.base.domain.annotation.InputPhoto
@@ -33,7 +31,7 @@ import java.time.ZoneId
  * PC - Post Constructor
  */
 @Component
-open class PostConstructorFetcher(
+class PostConstructorFetcher(
     private val postService: PostService,
     private val messageSenderService: MessageSenderService,
     private val callbackDataService: CallbackDataService,
@@ -69,7 +67,7 @@ open class PostConstructorFetcher(
     }
 
     @InjectData
-    private fun doFetch() {}
+    fun doFetch() {}
 
     @Callback(POST_CREATE_CANCEL)
     fun pcCancel(
@@ -198,8 +196,7 @@ open class PostConstructorFetcher(
     }
 
     @Callback(POST_ADD_BUTTON)
-    @Transactional
-    open fun pcAddButton(update: Update, post: PostDTO, user: UserDTO): PostDTO {
+    fun pcAddButton(update: Update, post: PostDTO, user: UserDTO): PostDTO {
         val chatId = updatesUtil.getChatId(update)
         if (post.buttons.size >= MAX_BUTTONS_COUNT) {
             messageSenderService.sendMessage(
@@ -495,7 +492,7 @@ open class PostConstructorFetcher(
     }
 
     @InputPhoto(PC_PHOTO_TYPE)
-    private fun changePhoto(
+    fun changePhoto(
         update: Update,
         post: PostDTO,
         user: UserDTO,
@@ -576,17 +573,28 @@ open class PostConstructorFetcher(
         ).save()
     }
 
-    private fun showPcConsole(
+    @Callback(BROADCAST_CREATE_NEW_POST)
+    fun showPcConsole(
         update: Update,
         user: UserDTO,
         post: PostDTO?,
     ): PostDTO {
+        val hasCallback = update.hasCallbackQuery()
+        val callbackMessageId =
+            if (hasCallback)
+                update.callbackQuery.message.messageId
+            else
+                null
         val chatId = updatesUtil.getChatId(update)!!
         var currentPost: PostDTO? = post
         if (currentPost == null) {
+            // TODO: алерт если есть посты с isCurrent
             currentPost = postService.save(
                 PostDTO(
-                    author = user
+                    author = user,
+                    lastConsoleMessageId = callbackMessageId,
+                    shouldShowWebPreview = false,
+                    isCurrent = true,
                 )
             )
             val messageText = "<b>Конструктор потовс</b>\n\nВыберите дальнейшее действие"
@@ -599,9 +607,10 @@ open class PostConstructorFetcher(
             val keyboard =
                 listOfNotNull(newPhoto, addText, addButton, webPreviewButton, cancelButton)
                     .map { listOf(it.createKeyboard()) }
-            val sent =
-                messageSenderService.sendMessage(
+            if (hasCallback) {
+                messageSenderService.editMessage(
                     MessageParams(
+                        messageId = callbackMessageId,
                         text = messageText,
                         parseMode = ParseMode.HTML,
                         replyMarkup = createKeyboard(keyboard),
@@ -609,9 +618,21 @@ open class PostConstructorFetcher(
                         disableWebPagePreview = !currentPost.shouldShowWebPreview,
                     ),
                 )
-            currentPost = currentPost.copy(
-                lastConsoleMessageId = sent.messageId
-            )
+            } else {
+                val sent =
+                    messageSenderService.sendMessage(
+                        MessageParams(
+                            text = messageText,
+                            parseMode = ParseMode.HTML,
+                            replyMarkup = createKeyboard(keyboard),
+                            chatId = chatId,
+                            disableWebPagePreview = !currentPost.shouldShowWebPreview,
+                        ),
+                    )
+                currentPost = currentPost.copy(
+                    lastConsoleMessageId = sent.messageId
+                )
+            }
         } else {
             deletePcConsole(update, currentPost)
             val photoProp =
@@ -726,7 +747,4 @@ open class PostConstructorFetcher(
     private fun CallbackDataDTO.save() = callbackDataService.save(this)!!
     private fun PostDTO.save() = postService.save(this)
     private fun PostButtonDTO.save() = postButtonService.save(this)
-
-    private fun createKeyboard(keyboard: List<List<InlineKeyboardButton>>) = InlineKeyboardMarkup().also { it.keyboard = keyboard }
-
 }
