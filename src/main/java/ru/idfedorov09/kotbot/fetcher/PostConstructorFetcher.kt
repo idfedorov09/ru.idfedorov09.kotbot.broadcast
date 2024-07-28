@@ -490,16 +490,17 @@ open class PostConstructorFetcher(
         update: Update,
         post: PostDTO,
         user: UserDTO,
-    ) {
+    ): PostDTO {
         var newPost = post
         val chatId = updatesUtil.getChatId(update)!!
-        if ((newPost.text?.length ?: 0) > MAX_TEXT_SIZE_WITHOUT_PHOTO) {
+        val postTextLength = newPost.text?.length ?: 0
+        if (postTextLength > MAX_TEXT_SIZE_WITHOUT_PHOTO) {
             messageSenderService.sendMessage(
                 MessageParams(
                     chatId = chatId,
                     text =
                     "Ошибка! Невозможно добавить фотографию, длина текста " +
-                            "${newPost.text?.length ?: 0} > $MAX_TEXT_SIZE_WITHOUT_PHOTO. " +
+                            "$postTextLength > $MAX_TEXT_SIZE_WITHOUT_PHOTO. " +
                             "Измените текст или не прикладывайте фотографию",
                 ),
             )
@@ -512,6 +513,7 @@ open class PostConstructorFetcher(
         showChangeButtonConsole(update, post)
         // TODO: user LUAT
         deleteUpdateMessage()
+        return newPost
     }
 
     private fun changeButtonCaptionMessage(
