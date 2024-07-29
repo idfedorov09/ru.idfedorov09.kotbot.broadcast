@@ -28,7 +28,7 @@ open class PostButtonEntity(
     open var callbackData: String? = null,
 
     /** id создателя кнопки **/
-    @ManyToOne(cascade = [(CascadeType.ALL)], fetch = FetchType.LAZY)
+    @ManyToOne(cascade = [(CascadeType.ALL)], fetch = FetchType.EAGER)
     @JoinColumn(name = "author_id", referencedColumnName = "user_id")
     open var author: UserEntity? = null,
 

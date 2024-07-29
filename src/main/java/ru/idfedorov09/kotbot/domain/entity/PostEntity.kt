@@ -19,7 +19,7 @@ open class PostEntity(
     @Column(name = "post_image_hash", columnDefinition = "TEXT")
     open var imageHash: String? = null,
     /** id создателя поста **/
-    @ManyToOne(cascade = [(CascadeType.MERGE)])
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "post_author_id", referencedColumnName = "user_id")
     open var author: UserEntity? = null,
     /** название поста **/

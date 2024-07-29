@@ -22,17 +22,16 @@ interface PostRepository<T: PostEntity> : JpaRepository<T, Long> {
     fun updateIsDeleted(postId: Long, isDeleted: Boolean): Int
 
     @Query(
-        value = """
-            SELECT * 
-            FROM post 
-            WHERE 1 = 1
-              AND post_author_id = :postAuthorId 
-              AND is_current = true 
-              AND is_deleted = false 
-              AND is_built = false 
-            LIMIT 1
+        """
+            SELECT p 
+            FROM PostEntity p 
+            LEFT JOIN FETCH p.buttons 
+            WHERE p.author.id = :postAuthorId 
+              AND p.isCurrent = true 
+              AND p.isDeleted = false 
+              AND p.isBuilt = false
         """,
-        nativeQuery = true
+        nativeQuery = false
     )
     fun findCurrentPostByAuthorId(postAuthorId: Long): PostEntity?
 }

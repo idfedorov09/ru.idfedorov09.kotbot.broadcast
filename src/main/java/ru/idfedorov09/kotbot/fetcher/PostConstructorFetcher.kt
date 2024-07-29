@@ -95,7 +95,7 @@ class PostConstructorFetcher(
                     "<s\\>текст</s\\> \\- зачеркнутый текст\n" +
                     "<code\\>текст</code\\> \\- выделенный текст \\(с копированием по клику\\)\n" +
                     "<pre language\\=\"c\\+\\+\"\\>текст</pre\\> \\- исходный код или любой другой текст\n" +
-                    "<a href\\='https://sno\\.mephi\\.ru/'\\>Сайт СНО</a\\> \\- ссылка"
+                    "<a href\\='https://google\\.com/'\\>Гугл</a\\> \\- ссылка"
         val cancelButton = CallbackDataDTO(
             callbackData = POST_ACTION_CANCEL,
             metaText = "Отмена"
@@ -208,6 +208,12 @@ class PostConstructorFetcher(
             return post
         }
 
+        post.buttons.add(
+            PostButtonDTO(
+                author = user,
+            )
+        )
+
         return changeButtonCaptionMessage(
             update = update,
             post = post,
@@ -232,7 +238,7 @@ class PostConstructorFetcher(
         post: PostDTO,
         user: UserDTO,
     ): PostDTO {
-        deletePcConsole(update, post)
+        val newPost = deletePcConsole(update, post)
         val chatId = updatesUtil.getChatId(update)
         val backToBc =
             CallbackDataDTO(
@@ -249,7 +255,7 @@ class PostConstructorFetcher(
                 ),
             )
         user.lastUserActionType = BroadcastLastUserActionType.PC_BUTTON_LINK_TYPE
-        return post.copy(
+        return newPost.copy(
             lastConsoleMessageId = sent.messageId
         ).save()
     }
@@ -260,14 +266,10 @@ class PostConstructorFetcher(
         post: PostDTO,
         user: UserDTO,
     ): PostDTO {
-        deletePcConsole(update, post)
+        val newPost = deletePcConsole(update, post)
 
-        val userId = updatesUtil.getUserId(update)
         val chatId = updatesUtil.getChatId(update)
-        val button = postButtonService
-            .getLastModifiedButtonByUserId(userId!!.toLong())
-            ?.copy(lastModifyTime = LocalDateTime.now(ZoneId.of("Europe/Moscow")))
-            ?: return post
+        val button = newPost.getLastModifiedButton()
 
         val urlTextCode = button.link?.let { "<code>$it</code>" } ?: "пусто"
         val urlTextLink = button.link?.let { "(<a href='$it'>попробовать перейти</a>)" } ?: ""
@@ -316,7 +318,7 @@ class PostConstructorFetcher(
                 ),
             )
         user.lastUserActionType = BroadcastLastUserActionType.DEFAULT_CREATE_POST
-        return post.copy(
+        return newPost.copy(
             lastConsoleMessageId = sent.messageId
         ).save()
     }
@@ -327,7 +329,7 @@ class PostConstructorFetcher(
         update: Update,
         post: PostDTO,
         user: UserDTO,
-        params: Map<String, String>,
+        params: Map<String, String>, // TODO: error
     ) {
         val buttonId = params["buttonId"]?.toLongOrNull()!!
         postButtonService.updateButtonModifyTimeById(buttonId)
@@ -340,8 +342,7 @@ class PostConstructorFetcher(
         user: UserDTO,
         post: PostDTO,
     ) {
-        val userId = updatesUtil.getUserId(update)!!
-        postButtonService.deleteLastModifiedButtonByUserId(userId.toLong())
+        postButtonService.deleteLastModifiedButtonByUserId(user.id!!)
         showPcConsole(update, user, post)
     }
 
@@ -351,7 +352,7 @@ class PostConstructorFetcher(
         post: PostDTO,
         user: UserDTO,
     ): PostDTO {
-        deletePcConsole(update, post)
+        val newPost = deletePcConsole(update, post)
         val chatId = updatesUtil.getChatId(update)!!
         val backToBc =
             CallbackDataDTO(
@@ -368,7 +369,7 @@ class PostConstructorFetcher(
                 ),
             )
         user.lastUserActionType = BroadcastLastUserActionType.PC_BUTTON_CALLBACK_TYPE
-        return post.copy(
+        return newPost.copy(
             lastConsoleMessageId = sent.messageId
         ).save()
     }
@@ -382,7 +383,7 @@ class PostConstructorFetcher(
         return post.copy(
             shouldShowWebPreview = !post.shouldShowWebPreview,
         ).save().also {
-            showPcConsole(update, user, post)
+            showPcConsole(update, user, it)
         }
     }
 
@@ -410,6 +411,7 @@ class PostConstructorFetcher(
                 text = text,
             )
         }
+        deleteUpdateMessage()
         showPcConsole(update, user, newPost)
         return newPost
     }
@@ -420,10 +422,9 @@ class PostConstructorFetcher(
         post: PostDTO,
         user: UserDTO,
     ) {
-        deletePcConsole(update, post)
+        val newPost = deletePcConsole(update, post)
         val caption = update.message.text
         val chatId = updatesUtil.getChatId(update)!!
-        val userId = updatesUtil.getUserId(update)!!
         if (caption.length >= MAX_BTN_TEXT_SIZE) {
             val backToBc =
                 CallbackDataDTO(
@@ -443,14 +444,12 @@ class PostConstructorFetcher(
             )
             return
         }
-        postButtonService
-            .getLastModifiedButtonByUserId(userId.toLong())
-            ?.copy(
-                text = caption,
-                lastModifyTime = LocalDateTime.now(ZoneId.of("Europe/Moscow")),
-            )
-            ?.save()
-        showChangeButtonConsole(update, post, user)
+        newPost.getLastModifiedButton().apply {
+            text = caption
+            lastModifyTime = LocalDateTime.now(ZoneId.of("Europe/Moscow"))
+        }
+        deleteUpdateMessage()
+        showChangeButtonConsole(update, newPost, user)
     }
 
     @InputText(PC_BUTTON_LINK_TYPE)
@@ -459,17 +458,14 @@ class PostConstructorFetcher(
         post: PostDTO,
         user: UserDTO,
     ) {
-        deletePcConsole(update, post)
+        val newPost = deletePcConsole(update, post)
         val newUrl = update.message.text
-        val userId = updatesUtil.getUserId(update)!!
-        postButtonService
-            .getLastModifiedButtonByUserId(userId.toLong())
-            ?.copy(
-                link = newUrl,
-                lastModifyTime = LocalDateTime.now(ZoneId.of("Europe/Moscow")),
-            )
-            ?.save()
-        showChangeButtonConsole(update, post, user)
+        newPost.getLastModifiedButton().apply {
+            link = newUrl
+            lastModifyTime = LocalDateTime.now(ZoneId.of("Europe/Moscow"))
+        }
+        deleteUpdateMessage()
+        showChangeButtonConsole(update, newPost, user)
     }
 
     @InputText(PC_BUTTON_CALLBACK_TYPE)
@@ -478,17 +474,17 @@ class PostConstructorFetcher(
         post: PostDTO,
         user: UserDTO,
     ) {
-        deletePcConsole(update, post)
+        val newPost = deletePcConsole(update, post)
         val newCallbackData = update.message.text
-        val userId = updatesUtil.getUserId(update)!!
-        postButtonService
-            .getLastModifiedButtonByUserId(userId.toLong())
-            ?.copy(
-                callbackData = newCallbackData,
-                lastModifyTime = LocalDateTime.now(ZoneId.of("Europe/Moscow")),
-            )
-            ?.save()
-        showChangeButtonConsole(update, post, user)
+        post.buttons
+            .sortedBy { it.lastModifyTime }
+            .first()
+        newPost.getLastModifiedButton().apply {
+            callbackData = newCallbackData
+            lastModifyTime = LocalDateTime.now(ZoneId.of("Europe/Moscow"))
+        }
+        deleteUpdateMessage()
+        showChangeButtonConsole(update, newPost, user)
     }
 
     @InputPhoto(PC_PHOTO_TYPE)
@@ -514,10 +510,10 @@ class PostConstructorFetcher(
             val photoBroadcast = update.message.photo.last().fileId
             newPost = post.copy(
                 imageHash = photoBroadcast
-            )
+            ).save()
         }
         deleteUpdateMessage()
-        showChangeButtonConsole(update, post, user)
+        showPcConsole(update, user, newPost)
         return newPost
     }
 
@@ -538,7 +534,7 @@ class PostConstructorFetcher(
                 metaText = if (backToDefaultConsole) "Отменить создание кнопки" else "К настройкам кнопки",
             ).save()
         val keyboard = listOf(listOf(backToConsole.createKeyboard()))
-        deletePcConsole(update, post)
+        val newPost = deletePcConsole(update, post)
         val sent =
             messageSenderService.sendMessage(
                 MessageParams(
@@ -548,7 +544,7 @@ class PostConstructorFetcher(
                 ),
             )
         user.lastUserActionType = BroadcastLastUserActionType.PC_BUTTON_CAPTION_TYPE
-        return post.copy(
+        return newPost.copy(
             lastConsoleMessageId = sent.messageId
         ).save()
     }
@@ -597,7 +593,7 @@ class PostConstructorFetcher(
                     isCurrent = true,
                 )
             )
-            val messageText = "<b>Конструктор потовс</b>\n\nВыберите дальнейшее действие"
+            val messageText = "<b>Конструктор постов</b>\n\nВыберите дальнейшее действие"
             val newPhoto = CallbackDataDTO(callbackData = POST_CHANGE_PHOTO, metaText = "Добавить фото").save()
             val addText = CallbackDataDTO(callbackData = POST_CHANGE_TEXT, metaText = "Добавить текст").save()
             val addButton = CallbackDataDTO(callbackData = POST_ADD_BUTTON, metaText = "Добавить кнопку").save()
@@ -634,7 +630,7 @@ class PostConstructorFetcher(
                 )
             }
         } else {
-            deletePcConsole(update, currentPost)
+            currentPost = deletePcConsole(update, currentPost)
             val photoProp =
                 CallbackDataDTO(
                     callbackData = POST_CHANGE_PHOTO,
@@ -747,4 +743,5 @@ class PostConstructorFetcher(
     private fun CallbackDataDTO.save() = callbackDataService.save(this)!!
     private fun PostDTO.save() = postService.save(this)
     private fun PostButtonDTO.save() = postButtonService.save(this)
+    private fun PostDTO.getLastModifiedButton() = this.buttons.maxBy { it.lastModifyTime }
 }

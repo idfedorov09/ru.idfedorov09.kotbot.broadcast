@@ -8,12 +8,12 @@ import java.time.ZoneId
 
 data class PostButtonDTO(
     val id: Long? = null,
-    val text: String? = null,
-    val link: String? = null,
-    val callbackData: String? = null,
+    var text: String? = null,
+    var link: String? = null,
+    var callbackData: String? = null,
     val author: UserDTO? = null,
-    val isDeleted: Boolean = false,
-    val lastModifyTime: LocalDateTime = LocalDateTime.now(ZoneId.of("Europe/Moscow")),
+    var isDeleted: Boolean = false,
+    var lastModifyTime: LocalDateTime = LocalDateTime.now(ZoneId.of("Europe/Moscow")),
 ): BaseDTO<PostButtonEntity>() {
     override fun toEntity() = PostButtonEntity(
         id = id,
