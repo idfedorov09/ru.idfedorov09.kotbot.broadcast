@@ -323,15 +323,19 @@ class PostConstructorFetcher(
         ).save()
     }
 
-    // TODO: callback params by name?
     @Callback(POST_CHANGE_BUTTON)
     fun editButton(
         update: Update,
         post: PostDTO,
         user: UserDTO,
-        params: Map<String, String>, // TODO: error
+        callbackData: CallbackDataDTO,
     ) {
-        val buttonId = params["buttonId"]?.toLongOrNull()!!
+        val buttonId = callbackData
+            .getParams()
+            .get("buttonId")
+            ?.toLongOrNull()
+            ?: return
+
         postButtonService.updateButtonModifyTimeById(buttonId)
         showChangeButtonConsole(update, post, user)
     }
@@ -657,9 +661,11 @@ class PostConstructorFetcher(
                     addAll(
                         postButtonService.findAllValidButtonsForPost(currentPost!!.id!!).map {
                             CallbackDataDTO(
-                                callbackData = POST_CHANGE_BUTTON + "&buttonId=${it.id}",
+                                callbackData = POST_CHANGE_BUTTON,
                                 metaText = it.text,
-                            ).save()
+                            )
+                                .setParameters("buttonId" to it.id!!)
+                                .save()
                         },
                     )
                 }

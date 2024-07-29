@@ -1,6 +1,8 @@
 package ru.idfedorov09.kotbot.repository
 
+import jakarta.transaction.Transactional
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import ru.idfedorov09.kotbot.domain.entity.PostButtonEntity
 import ru.idfedorov09.kotbot.fetcher.PostConstructorFetcher.Companion.MAX_BUTTONS_COUNT
@@ -21,6 +23,8 @@ interface PostButtonRepository<T: PostButtonEntity> : JpaRepository<T, Long> {
     )
     fun getLastModifiedButtonByUserId(userId: Long): PostButtonEntity?
 
+    @Modifying
+    @Transactional
     @Query(
         """
             UPDATE button
@@ -31,6 +35,8 @@ interface PostButtonRepository<T: PostButtonEntity> : JpaRepository<T, Long> {
     )
     fun updateButton(buttonId: Long)
 
+    @Modifying
+    @Transactional
     @Query(
         """
             UPDATE button
