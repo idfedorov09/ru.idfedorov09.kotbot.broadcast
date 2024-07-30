@@ -12,11 +12,11 @@ interface PostButtonRepository<T: PostButtonEntity> : JpaRepository<T, Long> {
     @Query(
         """
             SELECT *
-                FROM button
-                WHERE 1=1
-                    AND author_id = :userId
-                    AND is_deleted = false
-                ORDER BY last_modify_dttm DESC 
+            FROM button
+            WHERE 1 = 1
+                AND author_id = :userId
+                AND is_deleted = false
+            ORDER BY last_modify_dttm DESC 
             LIMIT 1
         """,
         nativeQuery = true,
@@ -44,8 +44,9 @@ interface PostButtonRepository<T: PostButtonEntity> : JpaRepository<T, Long> {
             WHERE button_id = (
                 SELECT button_id
                 FROM button
-                WHERE author_id = :userId
-                  AND is_deleted = false
+                WHERE 1 = 1
+                    AND author_id = :userId
+                    AND is_deleted = false
                 ORDER BY last_modify_dttm DESC
                 LIMIT 1
             )
@@ -55,15 +56,15 @@ interface PostButtonRepository<T: PostButtonEntity> : JpaRepository<T, Long> {
     fun deleteLastModifiedButtonByUserId(userId: Long)
 
 
-    // join с таблицей post
+    // join с таблицей user
     @Query(
         """
             SELECT *
-                FROM button
-                WHERE 1=1
-                    AND is_deleted = false
-                    AND post_id = :postId
-                ORDER BY button_id
+            FROM button
+            WHERE 1 = 1
+                AND is_deleted = false
+                AND post_id = :postId
+            ORDER BY button_id
             LIMIT ${MAX_BUTTONS_COUNT + 1}
         """,
         nativeQuery = true,

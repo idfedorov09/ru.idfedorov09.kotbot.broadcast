@@ -588,7 +588,7 @@ class PostConstructorFetcher(
         val chatId = updatesUtil.getChatId(update)!!
         var currentPost: PostDTO? = post
         if (currentPost == null) {
-            // TODO: алерт если есть посты с isCurrent
+            // TODO: алерт если есть посты с isCurrent (такой ситуации теоретически не должно быть)
             currentPost = postService.save(
                 PostDTO(
                     author = user,
@@ -675,7 +675,9 @@ class PostConstructorFetcher(
                     if (currentPost!!.imageHash == null && currentPost!!.text == null) {
                         remove(previewButton)
                     }
-                    // TODO: если кол-во кнопок >=5 то здесь убрать кнопку 'добавление кнопки'
+                    if (currentPost!!.buttons.size >= MAX_BUTTONS_COUNT) {
+                        remove(addButton)
+                    }
                 }.map { callbackData ->
                     listOf(callbackData.createKeyboard())
                 }
