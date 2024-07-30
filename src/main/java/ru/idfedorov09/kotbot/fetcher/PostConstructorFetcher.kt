@@ -186,22 +186,20 @@ class PostConstructorFetcher(
             metaText = "Назад к конструктору",
         )
 
-        val classifierKeyboard = RegistryHolder
+        val keyboard = RegistryHolder
             .getRegistry<PostClassifier>()
             .get(newPost.classifier)
             ?.createKeyboardAction
             ?.invoke(update, newPost, user, callbackData)
-            ?: listOf()
-
-        val keyboard = classifierKeyboard
-            .plusElement(listOf(backToPc))
-            .map { innerList ->
+            ?.map { innerList ->
                 innerList.map { callbackDTO ->
                     callbackDTO
                         .save()
                         .createKeyboard()
                 }
             }
+            ?: listOf()
+
         val sent =
             messageSenderService.sendMessage(
                 MessageParams(

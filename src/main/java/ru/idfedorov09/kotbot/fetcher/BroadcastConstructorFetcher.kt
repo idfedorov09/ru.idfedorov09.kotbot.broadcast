@@ -1,10 +1,12 @@
 package ru.idfedorov09.kotbot.fetcher
 
-import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.objects.Update
+import ru.idfedorov09.kotbot.config.registry.PostClassifier
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType
+import ru.idfedorov09.kotbot.domain.PostClassifiers.choosePost
+import ru.idfedorov09.kotbot.domain.PostClassifiers.createNewPost
 import ru.idfedorov09.telegram.bot.base.domain.annotation.Command
 import ru.idfedorov09.telegram.bot.base.domain.dto.CallbackDataDTO
 import ru.idfedorov09.telegram.bot.base.domain.dto.UserDTO
@@ -24,14 +26,13 @@ open class BroadcastConstructorFetcher(
         const val BROADCAST_SELECT_POST = "bc_select_existing_post" // TODO: create
         const val BROADCAST_CREATE_NEW_POST = "bc_create_new_post"
         const val BROADCAST_CREATE_CANCEL = "bc_create_cancel" // TODO: create
-        val broadcastClassifierParam = "classifier" to "broadcast" // TODO: "classifier" to const
-        private val log = LoggerFactory.getLogger(DefaultFetcher::class.java)
+        const val BROADCAST_SEND_NOW = "bc_send_post_now" // TODO: create
+        const val BROADCAST_SCHEDULE_SEND = "bc_schedule_send" // TODO: create
+        const val POST_BROADCAST_SAVE_POST_AND_EXIT = "bc_save_post_and_exit"
     }
 
     @InjectData
-    fun doFetch() {
-        log.info("test doti")
-    }
+    fun doFetch() {}
 
     @Command("/create_broadcast")
     fun broadcastEntry(
@@ -43,11 +44,11 @@ open class BroadcastConstructorFetcher(
         val selectExistingPostButton = CallbackDataDTO(
             callbackData = BROADCAST_SELECT_POST,
             metaText = "Выбрать пост"
-        ).addParameters(broadcastClassifierParam).save()
+        ).setClassifier(choosePost).save()
         val createNewPostButton = CallbackDataDTO(
             callbackData = BROADCAST_CREATE_NEW_POST,
             metaText = "Создать новый пост"
-        ).addParameters(broadcastClassifierParam).save()
+        ).setClassifier(createNewPost).save()
         val cancelButton = CallbackDataDTO(
             callbackData = BROADCAST_CREATE_CANCEL,
             metaText = "Отмена"
@@ -67,4 +68,7 @@ open class BroadcastConstructorFetcher(
         )
         user.lastUserActionType = BroadcastLastUserActionType.ENTRY_CREATE_POST
     }
+
+    private fun CallbackDataDTO.setClassifier(classifier: PostClassifier) =
+        addParameters(PostClassifier.mark to classifier.type)
 }
