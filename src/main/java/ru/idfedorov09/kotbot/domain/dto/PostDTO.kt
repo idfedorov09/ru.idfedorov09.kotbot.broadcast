@@ -1,6 +1,7 @@
 package ru.idfedorov09.kotbot.domain.dto
 
 import ru.idfedorov09.kotbot.domain.entity.PostEntity
+import ru.idfedorov09.kotbot.domain.service.PostService
 import ru.idfedorov09.telegram.bot.base.domain.dto.BaseDTO
 import ru.idfedorov09.telegram.bot.base.domain.dto.UserDTO
 
@@ -18,6 +19,14 @@ data class PostDTO(
     val classifier: String? = null,
     val buttons: MutableList<PostButtonDTO> = mutableListOf(),
 ) : BaseDTO<PostEntity>() {
+
+    companion object {
+        private lateinit var postService: PostService
+        fun init(service: PostService) {
+            postService = service
+        }
+    }
+
     override fun toEntity() = PostEntity(
         id = id,
         text = text,
@@ -32,4 +41,7 @@ data class PostDTO(
         classifier = classifier,
         buttons = buttons.map { it.toEntity() }.toMutableList(),
     )
+
+    fun save() = postService.save(this)
+    fun getLastModifiedButton() = buttons.maxBy { it.lastModifyTime }
 }

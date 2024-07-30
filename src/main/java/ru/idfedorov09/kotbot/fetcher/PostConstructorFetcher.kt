@@ -4,7 +4,6 @@ import org.springframework.stereotype.Component
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.objects.InputFile
 import org.telegram.telegrambots.meta.api.objects.Update
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
 import ru.idfedorov09.kotbot.config.registry.PostClassifier
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.DEFAULT_CREATE_POST
@@ -187,7 +186,7 @@ class PostConstructorFetcher(
         val backToPc = CallbackDataDTO(
             callbackData = POST_ACTION_CANCEL,
             metaText = "Назад к конструктору",
-        ).save()
+        )
 
         val classifierKeyboard = RegistryHolder
             .getRegistry<PostClassifier>()
@@ -200,7 +199,9 @@ class PostConstructorFetcher(
             .plusElement(listOf(backToPc))
             .map { innerList ->
                 innerList.map { callbackDTO ->
-                    callbackDTO.createKeyboard()
+                    callbackDTO
+                        .save()
+                        .createKeyboard()
                 }
             }
         val sent =
@@ -611,7 +612,7 @@ class PostConstructorFetcher(
         val chatId = updatesUtil.getChatId(update)!!
         var currentPost: PostDTO? = post
         if (currentPost == null) {
-            // TODO: алерт если есть посты с isCurrent (такой ситуации теоретически не должно быть)
+            // TODO: алерт если есть посты с isCurrent (такой ситуации теоретически не должно быть) ?
             val classifier = callbackData
                 ?.getParams()
                 ?.get("classifier") // TODO: to const
@@ -774,9 +775,4 @@ class PostConstructorFetcher(
         val text = "$smile Превью веб-страницы $state"
         return CallbackDataDTO(callbackData = POST_TOGGLE_PREVIEW, metaText = text).save()
     }
-
-    private fun CallbackDataDTO.save() = callbackDataService.save(this)!!
-    private fun PostDTO.save() = postService.save(this)
-    private fun PostButtonDTO.save() = postButtonService.save(this)
-    private fun PostDTO.getLastModifiedButton() = this.buttons.maxBy { it.lastModifyTime }
 }
