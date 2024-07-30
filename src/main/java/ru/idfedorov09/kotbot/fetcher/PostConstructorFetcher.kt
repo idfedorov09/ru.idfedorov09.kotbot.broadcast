@@ -19,7 +19,6 @@ import ru.idfedorov09.telegram.bot.base.domain.annotation.InputPhoto
 import ru.idfedorov09.telegram.bot.base.domain.annotation.InputText
 import ru.idfedorov09.telegram.bot.base.domain.dto.CallbackDataDTO
 import ru.idfedorov09.telegram.bot.base.domain.dto.UserDTO
-import ru.idfedorov09.telegram.bot.base.domain.service.CallbackDataService
 import ru.idfedorov09.telegram.bot.base.domain.service.MessageSenderService
 import ru.idfedorov09.telegram.bot.base.fetchers.DefaultFetcher
 import ru.idfedorov09.telegram.bot.base.util.MessageParams
@@ -36,7 +35,6 @@ import java.time.ZoneId
 class PostConstructorFetcher(
     private val postService: PostService,
     private val messageSenderService: MessageSenderService,
-    private val callbackDataService: CallbackDataService,
     private val updatesUtil: UpdatesUtil,
     private val postButtonService: PostButtonService,
 ): DefaultFetcher() {
@@ -161,7 +159,7 @@ class PostConstructorFetcher(
         val newPost = post.copy(
             imageHash = null,
         )
-        showPcConsole(update, user, post)
+        showPcConsole(update, user, newPost)
         user.lastUserActionType = DEFAULT_CREATE_POST
         return newPost
     }
@@ -534,10 +532,10 @@ class PostConstructorFetcher(
                 ),
             )
         } else {
-            val photoBroadcast = update.message.photo.last().fileId
+            val photoId = update.message.photo.last().fileId
             newPost = post.copy(
-                imageHash = photoBroadcast
-            ).save()
+                imageHash = photoId
+            )
         }
         deleteUpdateMessage()
         showPcConsole(update, user, newPost)
@@ -768,7 +766,7 @@ class PostConstructorFetcher(
         return currentPost!!.save()
     }
 
-    private fun createWebPreviewToggleButton(post: PostDTO): CallbackDataDTO? {
+    private fun createWebPreviewToggleButton(post: PostDTO): CallbackDataDTO {
 //        if (post.isWeekly) return null
         val smile = if (post.shouldShowWebPreview) "✅" else "❌"
         val state = if (post.shouldShowWebPreview) "(вкл)" else "(выкл)"
