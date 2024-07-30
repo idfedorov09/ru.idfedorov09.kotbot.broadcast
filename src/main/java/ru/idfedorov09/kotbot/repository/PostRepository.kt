@@ -35,20 +35,4 @@ interface PostRepository<T: PostEntity> : JpaRepository<T, Long> {
         nativeQuery = false
     )
     fun findCurrentPostByAuthorId(postAuthorId: Long): PostEntity?
-
-    @Modifying
-    @Transactional
-    @Query(
-        """
-            UPDATE post 
-            SET is_current = false, is_deleted = true 
-            WHERE 1 = 1
-                AND post_author_id = :authorId
-                AND is_current = true
-                AND is_deleted = false 
-                AND is_built = false
-        """,
-        nativeQuery = true
-    )
-    fun deletePrevUnbuiltPostsByAuthorId(authorId: Long): Int
 }
