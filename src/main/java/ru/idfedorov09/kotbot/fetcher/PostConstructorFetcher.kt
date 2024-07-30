@@ -4,6 +4,8 @@ import org.springframework.stereotype.Component
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.objects.InputFile
 import org.telegram.telegrambots.meta.api.objects.Update
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
+import ru.idfedorov09.kotbot.config.registry.PostClassifier
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.DEFAULT_CREATE_POST
 import ru.idfedorov09.kotbot.domain.dto.PostButtonDTO
@@ -11,6 +13,7 @@ import ru.idfedorov09.kotbot.domain.dto.PostDTO
 import ru.idfedorov09.kotbot.domain.service.PostButtonService
 import ru.idfedorov09.kotbot.domain.service.PostService
 import ru.idfedorov09.kotbot.fetcher.BroadcastConstructorFetcher.Companion.BROADCAST_CREATE_NEW_POST
+import ru.idfedorov09.telegram.bot.base.config.registry.RegistryHolder
 import ru.idfedorov09.telegram.bot.base.domain.LastUserActionTypes
 import ru.idfedorov09.telegram.bot.base.domain.annotation.Callback
 import ru.idfedorov09.telegram.bot.base.domain.annotation.InputPhoto
@@ -171,16 +174,35 @@ class PostConstructorFetcher(
     }
 
     @Callback(POST_PREVIEW)
-    // TODO: buttons from context!
-    fun pcPreview(update: Update, post: PostDTO, user: UserDTO): PostDTO {
-        // TODO: post sender service! Send  post
+    fun pcPreview(
+        update: Update,
+        post: PostDTO,
+        user: UserDTO,
+        callbackData: CallbackDataDTO,
+    ): PostDTO {
+        val newPost = deletePcConsole(update, post)
+        // TODO: post sender service! Send  post here!
+
         val messageText = "<b>Конструктор постов</b>\n\nВыберите дальнейшее действие"
         val backToPc = CallbackDataDTO(
             callbackData = POST_ACTION_CANCEL,
             metaText = "Назад к конструктору",
         ).save()
 
-        val keyboard = TODO("кнопки из контекста + backToPc")
+        val classifierKeyboard = RegistryHolder
+            .getRegistry<PostClassifier>()
+            .get(newPost.classifier)
+            ?.createKeyboardAction
+            ?.invoke(update, newPost, user, callbackData)
+            ?: listOf()
+
+        val keyboard = classifierKeyboard
+            .plusElement(listOf(backToPc))
+            .map { innerList ->
+                innerList.map { callbackDTO ->
+                    callbackDTO.createKeyboard()
+                }
+            }
         val sent =
             messageSenderService.sendMessage(
                 MessageParams(
@@ -190,7 +212,7 @@ class PostConstructorFetcher(
                     replyMarkup = createKeyboard(keyboard),
                 ),
             )
-        return post.copy(
+        return newPost.copy(
             lastConsoleMessageId = sent.messageId
         ).save()
     }
@@ -578,6 +600,7 @@ class PostConstructorFetcher(
         update: Update,
         user: UserDTO,
         post: PostDTO?,
+        callbackData: CallbackDataDTO? = null,
     ): PostDTO {
         val hasCallback = update.hasCallbackQuery()
         val callbackMessageId =
@@ -589,12 +612,16 @@ class PostConstructorFetcher(
         var currentPost: PostDTO? = post
         if (currentPost == null) {
             // TODO: алерт если есть посты с isCurrent (такой ситуации теоретически не должно быть)
+            val classifier = callbackData
+                ?.getParams()
+                ?.get("classifier") // TODO: to const
             currentPost = postService.save(
                 PostDTO(
                     author = user,
                     lastConsoleMessageId = callbackMessageId,
                     shouldShowWebPreview = false,
                     isCurrent = true,
+                    classifier = classifier,
                 )
             )
             val messageText = "<b>Конструктор постов</b>\n\nВыберите дальнейшее действие"

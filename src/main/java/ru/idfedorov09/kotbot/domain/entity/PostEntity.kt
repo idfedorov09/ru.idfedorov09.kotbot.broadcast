@@ -42,6 +42,9 @@ open class PostEntity(
     /** Текущий ли это пост **/
     @Column(name = "is_current")
     open var isCurrent: Boolean = false,
+    /** тип поста **/
+    @Column(name = "classifier", columnDefinition = "TEXT")
+    open var classifier: String? = null,
 
     /** кнопки из поста **/
     @OneToMany(cascade = [CascadeType.ALL], fetch = FetchType.EAGER, orphanRemoval = true)
@@ -59,6 +62,7 @@ open class PostEntity(
         isDeleted = isDeleted,
         shouldShowWebPreview = shouldShowWebPreview,
         isCurrent = isCurrent,
+        classifier = classifier,
         buttons = buttons.map { it.toDTO() }.toMutableList(),
     )
 }
