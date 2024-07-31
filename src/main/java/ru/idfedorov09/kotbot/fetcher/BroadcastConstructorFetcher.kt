@@ -31,7 +31,7 @@ open class BroadcastConstructorFetcher(
 ) : DefaultFetcher() {
 
     companion object {
-        const val BROADCAST_SELECT_POST = "bc_select_existing_post" // TODO: create
+        const val BROADCAST_SELECT_POST = "bc_select_existing_post"
         const val BROADCAST_CREATE_NEW_POST = "bc_create_new_post"
         const val BROADCAST_CREATE_CANCEL = "bc_create_cancel" // TODO: create
         const val BROADCAST_SEND_NOW = "bc_send_post_now" // TODO: create
