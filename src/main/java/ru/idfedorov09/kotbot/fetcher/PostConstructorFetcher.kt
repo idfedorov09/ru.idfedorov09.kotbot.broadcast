@@ -7,6 +7,7 @@ import org.telegram.telegrambots.meta.api.objects.Update
 import ru.idfedorov09.kotbot.config.registry.PostClassifier
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.DEFAULT_CREATE_POST
+import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.PC_NAME_TYPE
 import ru.idfedorov09.kotbot.domain.GlobalConstants.getButtonIdParam
 import ru.idfedorov09.kotbot.domain.GlobalConstants.setButtonIdParam
 import ru.idfedorov09.kotbot.domain.dto.PostButtonDTO
@@ -56,6 +57,7 @@ class PostConstructorFetcher(
         const val POST_DELETE_BUTTON = "post_delete_button"
         const val POST_CHANGE_BUTTON = "post_change_button"
         const val POST_TOGGLE_PREVIEW = "post_toggle_preview"
+        const val POST_CHANGE_NAME = "post_change_name"
 
         const val PC_TEXT_TYPE = "PC_TEXT_TYPE"
         const val PC_BUTTON_CAPTION_TYPE = "PC_BUTTON_CAPTION_TYPE"
@@ -82,6 +84,25 @@ class PostConstructorFetcher(
         user.lastUserActionType = LastUserActionTypes.DEFAULT
     }
 
+    @Callback(POST_CHANGE_NAME)
+    fun setPostName(
+        update: Update,
+        user: UserDTO,
+        post: PostDTO,
+    ): PostDTO {
+        val messageText = "<b>Конструктор постов</b>\n\nНапишите название поста"
+        val newPost = deletePcConsole(update, post)
+        messageSenderService.sendMessage(
+            MessageParams(
+                chatId = updatesUtil.getChatId(update)!!,
+                text = messageText,
+                parseMode = ParseMode.HTML,
+            )
+        )
+        user.lastUserActionType = PC_NAME_TYPE
+        return newPost
+    }
+
     @Callback(POST_CHANGE_TEXT)
     fun pcChangeText(
         update: Update,
@@ -99,6 +120,7 @@ class PostConstructorFetcher(
                     "<code\\>текст</code\\> \\- выделенный текст \\(с копированием по клику\\)\n" +
                     "<pre language\\=\"c\\+\\+\"\\>текст</pre\\> \\- исходный код или любой другой текст\n" +
                     "<a href\\='https://google\\.com/'\\>Гугл</a\\> \\- ссылка"
+        // TODO: идея: картинки ссылками
         val cancelButton = CallbackDataDTO(
             callbackData = POST_ACTION_CANCEL,
             metaText = "Отмена"
@@ -609,8 +631,9 @@ class PostConstructorFetcher(
         if (currentPost == null) {
             // TODO: алерт если есть посты с isCurrent (такой ситуации теоретически не должно быть) ?
             val classifier = callbackData
+                ?.callbackData
                 ?.getParams()
-                ?.get("classifier") // TODO: to const
+                ?.get(PostClassifier.mark)
             currentPost = postService.save(
                 PostDTO(
                     author = user,
@@ -700,8 +723,8 @@ class PostConstructorFetcher(
                     if (currentPost!!.buttons.size >= MAX_BUTTONS_COUNT) {
                         remove(addButton)
                     }
-                }.map { callbackData ->
-                    listOf(callbackData.createKeyboard())
+                }.map {
+                    listOf(it.createKeyboard())
                 }
             val text =
                 currentPost.run {

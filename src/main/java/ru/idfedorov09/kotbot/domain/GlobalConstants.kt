@@ -8,11 +8,14 @@ object GlobalConstants {
     const val CURRENT_PAGE = "current_page"
     const val POSTS_PAGE_SIZE = 3 // TODO: 10
 
-    fun CallbackDataDTO.setPostId(postId: Long) = addParameters(POST_ID to postId)
-    fun CallbackDataDTO.setButtonIdParam(id: Long) = setParameters(BUTTON_ID to id)
-    fun CallbackDataDTO.setCurrentPage(page: Int) = addParameters(CURRENT_PAGE to page)
+    private fun CallbackDataDTO.setSomething(key: String, value: Any) =
+        callbackData.addParameters(this, key to value)
 
-    fun CallbackDataDTO.getPostId() = getParams().get(POST_ID)
-    fun CallbackDataDTO.getButtonIdParam() = getParams().get(BUTTON_ID)
-    fun CallbackDataDTO.getCurrentPage() = getParams().get(CURRENT_PAGE)
+    fun CallbackDataDTO.setPostId(postId: Long) = setSomething(POST_ID, postId)
+    fun CallbackDataDTO.setButtonIdParam(id: Long) = setSomething(BUTTON_ID, id)
+    fun CallbackDataDTO.setCurrentPage(page: Int) = setSomething(CURRENT_PAGE, page)
+
+    fun CallbackDataDTO.getPostId() = callbackData.getParams().get(POST_ID)
+    fun CallbackDataDTO.getButtonIdParam() = callbackData.getParams().get(BUTTON_ID)
+    fun CallbackDataDTO.getCurrentPage() = callbackData.getParams().get(CURRENT_PAGE)
 }

@@ -11,7 +11,11 @@ import ru.idfedorov09.kotbot.domain.GlobalConstants.setCurrentPage
 import ru.idfedorov09.kotbot.domain.GlobalConstants.setPostId
 import ru.idfedorov09.kotbot.domain.PostClassifiers.choosePost
 import ru.idfedorov09.kotbot.domain.PostClassifiers.createNewPost
+import ru.idfedorov09.kotbot.domain.dto.BroadcastDataDTO
+import ru.idfedorov09.kotbot.domain.dto.PostDTO
 import ru.idfedorov09.kotbot.domain.service.PostService
+import ru.idfedorov09.telegram.bot.base.domain.LastUserActionTypes
+import ru.idfedorov09.telegram.bot.base.domain.annotation.Callback
 import ru.idfedorov09.telegram.bot.base.domain.annotation.Command
 import ru.idfedorov09.telegram.bot.base.domain.dto.CallbackDataDTO
 import ru.idfedorov09.telegram.bot.base.domain.dto.UserDTO
@@ -36,7 +40,6 @@ open class BroadcastConstructorFetcher(
         const val BROADCAST_CREATE_CANCEL = "bc_create_cancel" // TODO: create
         const val BROADCAST_SEND_NOW = "bc_send_post_now" // TODO: create
         const val BROADCAST_SCHEDULE_SEND = "bc_schedule_send" // TODO: create
-        const val POST_BROADCAST_SAVE_POST_AND_EXIT = "bc_save_post_and_exit"
     }
 
     @InjectData
@@ -48,7 +51,6 @@ open class BroadcastConstructorFetcher(
         user: UserDTO,
     ) {
         val chatId = updatesUtil.getChatId(update)!!
-
         val selectExistingPostButton = CallbackDataDTO(
             callbackData = BROADCAST_SELECT_POST,
             metaText = "Выбрать пост"
@@ -77,7 +79,7 @@ open class BroadcastConstructorFetcher(
         user.lastUserActionType = BroadcastLastUserActionType.ENTRY_CREATE_POST
     }
 
-    @Command(BROADCAST_SELECT_POST)
+    @Callback(BROADCAST_SELECT_POST)
     fun selectExistingPost(
         update: Update,
         callbackDataDTO: CallbackDataDTO,
@@ -139,6 +141,40 @@ open class BroadcastConstructorFetcher(
         // TODO: luat?
     }
 
+    // TODO
+//    @Callback(POST_BROADCAST_SAVE_POST_AND_EXIT)
+    fun savePostAndExit(
+        update: Update,
+        user: UserDTO,
+        broadcastDataDTO: BroadcastDataDTO,
+        post: PostDTO,
+    ) {
+        val callbackAnswer =
+            AnswerCallbackQuery().also {
+                it.text = "✅ Сохранено"
+                it.callbackQueryId = update.callbackQuery.id
+            }
+        bot.execute(callbackAnswer)
+
+        val chatId = updatesUtil.getChatId(update)!!
+        post.lastConsoleMessageId?.let {
+            messageSenderService.deleteMessage(
+                MessageParams(
+                    chatId = chatId,
+                    messageId = it
+                )
+            )
+        }
+        val newPost = post.copy(
+            isBuilt = true,
+            lastConsoleMessageId = null,
+        ).save().also { addToContext(it) }
+        val newBroadcastDataDTO = broadcastDataDTO.copy(
+            currentPost = null,
+        ).save().also { addToContext(it) }
+        user.lastUserActionType = LastUserActionTypes.DEFAULT
+    }
+
     private fun CallbackDataDTO.setClassifier(classifier: PostClassifier) =
-        addParameters(PostClassifier.mark to classifier.type)
+        this.callbackData.addParameters(this, PostClassifier.mark to classifier.type)
 }

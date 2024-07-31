@@ -72,4 +72,20 @@ object BroadcastCallbackCommand {
         command = "bc_create_cancel",
         description = "Отмена создания рассылки",
     )
+    val BROADCAST_SEND_NOW = CallbackCommand(
+        command = "bc_send_post_now",
+        description = "Отправить рассылку сейчас",
+    )
+    val BROADCAST_SCHEDULE_SEND = CallbackCommand(
+        command = "bc_schedule_send",
+        description = "Отложенная рассылка"
+    )
+    val POST_BROADCAST_SAVE_POST_AND_EXIT = CallbackCommand(
+        command = "bc_save_post_and_exit",
+        description = "Сохранить и выйти"
+    )
+    val POST_CHANGE_NAME = CallbackCommand(
+        command = "post_change_name",
+        description = "Ввести название поста",
+    )
 }

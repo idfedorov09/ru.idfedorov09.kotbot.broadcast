@@ -7,7 +7,6 @@ object BroadcastLastUserActionType {
         type = "ENTRY_CREATE_POST",
         description = "Создание поста - точка входа",
     )
-
     val DEFAULT_CREATE_POST = LastUserActionType(
         type = "DEFAULT_CREATE_POST",
         description = "Дефолтный стейт создания поста (меню создания)",
@@ -31,5 +30,9 @@ object BroadcastLastUserActionType {
     val PC_BUTTON_CALLBACK_TYPE = LastUserActionType(
         type = "PC_BUTTON_CALLBACK_TYPE",
         description = "Ввод текста коллбэка кнопки"
+    )
+    val PC_NAME_TYPE = LastUserActionType(
+        type = "PC_NAME_TYPE",
+        description = "Ввод названия поста"
     )
 }

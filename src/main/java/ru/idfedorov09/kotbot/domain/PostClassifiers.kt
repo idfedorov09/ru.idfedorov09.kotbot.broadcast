@@ -5,8 +5,8 @@ import ru.idfedorov09.kotbot.config.registry.PostClassifier
 import ru.idfedorov09.kotbot.domain.dto.PostDTO
 import ru.idfedorov09.kotbot.fetcher.BroadcastConstructorFetcher.Companion.BROADCAST_SCHEDULE_SEND
 import ru.idfedorov09.kotbot.fetcher.BroadcastConstructorFetcher.Companion.BROADCAST_SEND_NOW
-import ru.idfedorov09.kotbot.fetcher.BroadcastConstructorFetcher.Companion.POST_BROADCAST_SAVE_POST_AND_EXIT
 import ru.idfedorov09.kotbot.fetcher.PostConstructorFetcher.Companion.POST_ACTION_CANCEL
+import ru.idfedorov09.kotbot.fetcher.PostConstructorFetcher.Companion.POST_CHANGE_NAME
 import ru.idfedorov09.telegram.bot.base.domain.dto.CallbackDataDTO
 import ru.idfedorov09.telegram.bot.base.domain.dto.UserDTO
 
@@ -59,7 +59,7 @@ object PostClassifiers {
             metaText = "Запланировать рассылку",
         )
         val justSaveAndExit = CallbackDataDTO(
-            callbackData = POST_BROADCAST_SAVE_POST_AND_EXIT,
+            callbackData = POST_CHANGE_NAME,
             metaText = "Сохранить и выйти",
         )
         val backToPc = CallbackDataDTO(

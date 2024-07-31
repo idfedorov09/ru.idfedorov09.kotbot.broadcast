@@ -27,6 +27,7 @@ class PostDataCollector(
         val broadcastData = broadcastDataDTO
             ?: broadcastDataService.getBroadcastDataByUserId(user.id!!)
             ?: BroadcastDataDTO(user = user).save()
+        addToContext(broadcastData)
         if (broadcastData.currentPost != null) return broadcastData.currentPost
         val post = callbackDataDTO
             ?.getPostId()
