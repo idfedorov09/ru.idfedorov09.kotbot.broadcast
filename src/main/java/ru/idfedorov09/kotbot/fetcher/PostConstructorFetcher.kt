@@ -87,6 +87,7 @@ class PostConstructorFetcher(
         user: UserDTO,
     ): PostDTO {
         val newPost = deletePcConsole(update, post)
+        // TODO: скрытый текст??
         val msgText =
             "*Напишите текст уведомления*\\.\n\nПравила оформления:\n" +
                     "<b\\>текст</b\\> \\- жирный текст\n" +
@@ -178,13 +179,8 @@ class PostConstructorFetcher(
         callbackData: CallbackDataDTO,
     ): PostDTO {
         val newPost = deletePcConsole(update, post)
-        // TODO: post sender service! Send  post here!
-
         val messageText = "<b>Конструктор постов</b>\n\nВыберите дальнейшее действие"
-        val backToPc = CallbackDataDTO(
-            callbackData = POST_ACTION_CANCEL,
-            metaText = "Назад к конструктору",
-        )
+        postService.sendPost(user, newPost)
 
         val keyboard = RegistryHolder
             .getRegistry<PostClassifier>()
