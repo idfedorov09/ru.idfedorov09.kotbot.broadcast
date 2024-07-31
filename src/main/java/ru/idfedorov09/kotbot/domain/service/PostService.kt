@@ -14,6 +14,7 @@ import ru.idfedorov09.kotbot.repository.PostRepository
 import ru.idfedorov09.telegram.bot.base.domain.dto.UserDTO
 import ru.idfedorov09.telegram.bot.base.domain.service.MessageSenderService
 import ru.idfedorov09.telegram.bot.base.util.MessageParams
+import kotlin.jvm.optionals.getOrNull
 
 @Service
 open class PostService(
@@ -37,6 +38,8 @@ open class PostService(
             .findCurrentPostByAuthorId(authorId)
             ?.toDTO()
     }
+
+    open fun findByPostId(postId: Long) = postRepository.findById(postId).getOrNull()?.toDTO()
 
     @Transactional
     open fun save(postEntity: PostEntity): PostEntity {
