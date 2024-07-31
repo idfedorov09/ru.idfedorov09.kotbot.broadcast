@@ -111,7 +111,7 @@ open class BroadcastConstructorFetcher(
             .filter { it.name != null }
             .map {
                 CallbackDataDTO(
-                    callbackData = BROADCAST_CREATE_NEW_POST,
+                    callbackData = BROADCAST_CREATE_NEW_POST, // TODO: rename?
                     metaText = it.name,
                 )
                     .setClassifier(choosePost)
