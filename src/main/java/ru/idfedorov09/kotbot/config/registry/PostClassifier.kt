@@ -15,8 +15,5 @@ data class PostClassifier(
         CallbackDataDTO
     ) -> List<List<CallbackDataDTO>>,
 ): RegistryModel(PostClassifier::class, type) {
-    companion object {
-        const val mark = "classifier"
-    }
     init { registerModel() }
 }

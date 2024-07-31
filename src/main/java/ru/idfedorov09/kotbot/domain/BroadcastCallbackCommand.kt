@@ -80,12 +80,8 @@ object BroadcastCallbackCommand {
         command = "bc_schedule_send",
         description = "Отложенная рассылка"
     )
-    val POST_BROADCAST_SAVE_POST_AND_EXIT = CallbackCommand(
-        command = "bc_save_post_and_exit",
-        description = "Сохранить и выйти"
-    )
     val POST_CHANGE_NAME = CallbackCommand(
         command = "post_change_name",
-        description = "Ввести название поста",
+        description = "Ввести/изменить название поста (используется также при Сохранить и выйти)",
     )
 }

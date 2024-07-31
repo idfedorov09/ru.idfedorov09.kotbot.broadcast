@@ -2,6 +2,7 @@ package ru.idfedorov09.kotbot.domain
 
 import org.telegram.telegrambots.meta.api.objects.Update
 import ru.idfedorov09.kotbot.config.registry.PostClassifier
+import ru.idfedorov09.kotbot.domain.GlobalConstants.setClassifier
 import ru.idfedorov09.kotbot.domain.dto.PostDTO
 import ru.idfedorov09.kotbot.fetcher.BroadcastConstructorFetcher.Companion.BROADCAST_SCHEDULE_SEND
 import ru.idfedorov09.kotbot.fetcher.BroadcastConstructorFetcher.Companion.BROADCAST_SEND_NOW
@@ -18,6 +19,14 @@ object PostClassifiers {
     )
     val choosePost = PostClassifier(
         type = "choosePostClassifier",
+        createKeyboardAction = ::createChoosePostKeyboard
+    )
+    val defaultSaveClassifier = PostClassifier(
+        type = "defaultSaveClassifier",
+        createKeyboardAction = ::createChoosePostKeyboard
+    )
+    val savePostAndExitClassifier = PostClassifier(
+        type = "savePostAndExitClassifier",
         createKeyboardAction = ::createChoosePostKeyboard
     )
 
@@ -61,7 +70,7 @@ object PostClassifiers {
         val justSaveAndExit = CallbackDataDTO(
             callbackData = POST_CHANGE_NAME,
             metaText = "Сохранить и выйти",
-        )
+        ).setClassifier(savePostAndExitClassifier)
         val backToPc = CallbackDataDTO(
             callbackData = POST_ACTION_CANCEL,
             metaText = "Назад к конструктору",

@@ -7,6 +7,7 @@ import org.telegram.telegrambots.meta.api.objects.Update
 import ru.idfedorov09.kotbot.config.registry.PostClassifier
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType
 import ru.idfedorov09.kotbot.domain.GlobalConstants.getCurrentPage
+import ru.idfedorov09.kotbot.domain.GlobalConstants.setClassifier
 import ru.idfedorov09.kotbot.domain.GlobalConstants.setCurrentPage
 import ru.idfedorov09.kotbot.domain.GlobalConstants.setPostId
 import ru.idfedorov09.kotbot.domain.PostClassifiers.choosePost
@@ -174,7 +175,4 @@ open class BroadcastConstructorFetcher(
         ).save().also { addToContext(it) }
         user.lastUserActionType = LastUserActionTypes.DEFAULT
     }
-
-    private fun CallbackDataDTO.setClassifier(classifier: PostClassifier) =
-        this.callbackData.addParameters(this, PostClassifier.mark to classifier.type)
 }

@@ -9,7 +9,11 @@ import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.DEFAULT_CREATE_POST
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.PC_NAME_TYPE
 import ru.idfedorov09.kotbot.domain.GlobalConstants.getButtonIdParam
+import ru.idfedorov09.kotbot.domain.GlobalConstants.getClassifier
 import ru.idfedorov09.kotbot.domain.GlobalConstants.setButtonIdParam
+import ru.idfedorov09.kotbot.domain.GlobalConstants.setClassifier
+import ru.idfedorov09.kotbot.domain.PostClassifiers.defaultSaveClassifier
+import ru.idfedorov09.kotbot.domain.PostClassifiers.savePostAndExitClassifier
 import ru.idfedorov09.kotbot.domain.dto.PostButtonDTO
 import ru.idfedorov09.kotbot.domain.dto.PostDTO
 import ru.idfedorov09.kotbot.domain.service.PostButtonService
@@ -89,6 +93,7 @@ class PostConstructorFetcher(
         update: Update,
         user: UserDTO,
         post: PostDTO,
+        callbackData: CallbackDataDTO,
     ): PostDTO {
         val messageText = "<b>Конструктор постов</b>\n\nНапишите название поста"
         val newPost = deletePcConsole(update, post)
@@ -99,7 +104,11 @@ class PostConstructorFetcher(
                 parseMode = ParseMode.HTML,
             )
         )
-        user.lastUserActionType = PC_NAME_TYPE
+        val classifier = RegistryHolder
+            .getRegistry<PostClassifier>()
+            .get(callbackData.getClassifier())
+            ?: defaultSaveClassifier
+        user.lastUserActionType = PC_NAME_TYPE.setClassifier(classifier)
         return newPost
     }
 
@@ -630,10 +639,7 @@ class PostConstructorFetcher(
         var currentPost: PostDTO? = post
         if (currentPost == null) {
             // TODO: алерт если есть посты с isCurrent (такой ситуации теоретически не должно быть) ?
-            val classifier = callbackData
-                ?.callbackData
-                ?.getParams()
-                ?.get(PostClassifier.mark)
+            val classifier = callbackData?.getClassifier()
             currentPost = postService.save(
                 PostDTO(
                     author = user,
