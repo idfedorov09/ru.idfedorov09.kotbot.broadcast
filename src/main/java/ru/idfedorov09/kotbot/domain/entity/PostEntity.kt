@@ -39,9 +39,6 @@ open class PostEntity(
     /** Нужно ли web preview при показе поста**/
     @Column(name = "should_show_web_preview")
     open var shouldShowWebPreview: Boolean = false,
-    /** Текущий ли это пост **/
-    @Column(name = "is_current")
-    open var isCurrent: Boolean = false,
     /** тип поста **/
     @Column(name = "classifier", columnDefinition = "TEXT")
     open var classifier: String? = null,
@@ -61,7 +58,6 @@ open class PostEntity(
         lastConsoleMessageId = lastConsoleMessageId,
         isDeleted = isDeleted,
         shouldShowWebPreview = shouldShowWebPreview,
-        isCurrent = isCurrent,
         classifier = classifier,
         buttons = buttons.map { it.toDTO() }.toMutableList(),
     )

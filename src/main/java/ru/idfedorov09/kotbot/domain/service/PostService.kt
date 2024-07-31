@@ -2,7 +2,6 @@ package ru.idfedorov09.kotbot.domain.service
 
 import jakarta.persistence.EntityManager
 import jakarta.transaction.Transactional
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.objects.InputFile
@@ -20,10 +19,8 @@ import kotlin.jvm.optionals.getOrNull
 open class PostService(
     private val entityManager: EntityManager,
     private val messageSenderService: MessageSenderService,
+    private val postRepository: PostRepository<PostEntity>,
 ) {
-
-    @Autowired
-    private lateinit var postRepository: PostRepository<PostEntity>
 
     open fun deletePost(post: PostDTO) {
         post.id ?: return
@@ -67,6 +64,9 @@ open class PostService(
             )
         )
     }
+
+    open fun findAvailablePostsOnPage(pageNum: Int) = postRepository.findAvailablePostsOnPage(pageNum)
+    open fun lastPageNum() = postRepository.lastPageNum()
 
     private fun createKeyboard(keyboard: List<List<InlineKeyboardButton>>) =
         InlineKeyboardMarkup().also { it.keyboard = keyboard }

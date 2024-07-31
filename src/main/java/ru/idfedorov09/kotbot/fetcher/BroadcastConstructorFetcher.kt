@@ -1,16 +1,22 @@
 package ru.idfedorov09.kotbot.fetcher
 
 import org.springframework.stereotype.Component
+import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.objects.Update
 import ru.idfedorov09.kotbot.config.registry.PostClassifier
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType
+import ru.idfedorov09.kotbot.domain.GlobalConstants.getCurrentPage
+import ru.idfedorov09.kotbot.domain.GlobalConstants.setCurrentPage
+import ru.idfedorov09.kotbot.domain.GlobalConstants.setPostId
 import ru.idfedorov09.kotbot.domain.PostClassifiers.choosePost
 import ru.idfedorov09.kotbot.domain.PostClassifiers.createNewPost
+import ru.idfedorov09.kotbot.domain.service.PostService
 import ru.idfedorov09.telegram.bot.base.domain.annotation.Command
 import ru.idfedorov09.telegram.bot.base.domain.dto.CallbackDataDTO
 import ru.idfedorov09.telegram.bot.base.domain.dto.UserDTO
 import ru.idfedorov09.telegram.bot.base.domain.service.MessageSenderService
+import ru.idfedorov09.telegram.bot.base.executor.Executor
 import ru.idfedorov09.telegram.bot.base.fetchers.DefaultFetcher
 import ru.idfedorov09.telegram.bot.base.util.MessageParams
 import ru.idfedorov09.telegram.bot.base.util.UpdatesUtil
@@ -20,6 +26,8 @@ import ru.mephi.sno.libs.flow.belly.InjectData
 open class BroadcastConstructorFetcher(
     private val messageSenderService: MessageSenderService,
     private val updatesUtil: UpdatesUtil,
+    private val postService: PostService,
+    private val bot: Executor,
 ) : DefaultFetcher() {
 
     companion object {
@@ -67,6 +75,68 @@ open class BroadcastConstructorFetcher(
             )
         )
         user.lastUserActionType = BroadcastLastUserActionType.ENTRY_CREATE_POST
+    }
+
+    @Command(BROADCAST_SELECT_POST)
+    fun selectExistingPost(
+        update: Update,
+        callbackDataDTO: CallbackDataDTO,
+    ) {
+        val chatId = updatesUtil.getChatId(update)!!
+        val pagesCount = postService.lastPageNum()
+        if (pagesCount < 0) {
+            val callbackAnswer =
+                AnswerCallbackQuery().also {
+                    it.text = "\uD83D\uDEAB Постов не найдено!"
+                    it.callbackQueryId = update.callbackQuery.id
+                    it.showAlert = true
+                }
+            bot.execute(callbackAnswer)
+            return
+        }
+        val currentPage = callbackDataDTO.getCurrentPage()?.toIntOrNull() ?: 0
+
+        val messageText = "<b>Конструктор рассылки</b>\n\nВыберите пост"
+        val backButton = CallbackDataDTO(
+            callbackData = BROADCAST_SELECT_POST,
+            metaText = "◀\uFE0F"
+        ).setCurrentPage(currentPage - 1).takeIf { currentPage > 0 }?.save()
+        val nextButton = CallbackDataDTO(
+            callbackData = BROADCAST_SELECT_POST,
+            metaText = "◀\uFE0F"
+        ).setCurrentPage(currentPage - 1).takeIf { currentPage < pagesCount }?.save()
+
+        val posts = postService
+            .findAvailablePostsOnPage(currentPage)
+            .filter { it.name != null }
+            .map {
+                CallbackDataDTO(
+                    callbackData = BROADCAST_CREATE_NEW_POST,
+                    metaText = it.name,
+                )
+                    .setClassifier(choosePost)
+                    .setPostId(it.id!!)
+                    .save()
+            }
+
+        val keyboard = posts
+            .map { listOf(it.createKeyboard()) }
+            .plusElement(
+                listOfNotNull(
+                    backButton?.createKeyboard(),
+                    nextButton?.createKeyboard(),
+                )
+            )
+
+        messageSenderService.sendMessage(
+            MessageParams(
+                chatId = chatId,
+                text = messageText,
+                parseMode = ParseMode.HTML,
+                replyMarkup = createKeyboard(keyboard),
+            )
+        )
+        // TODO: luat?
     }
 
     private fun CallbackDataDTO.setClassifier(classifier: PostClassifier) =

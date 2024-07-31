@@ -15,7 +15,6 @@ data class PostDTO(
     val lastConsoleMessageId: Int? = null,
     val isDeleted: Boolean = false,
     val shouldShowWebPreview: Boolean = false,
-    val isCurrent: Boolean = false,
     val classifier: String? = null,
     val buttons: MutableList<PostButtonDTO> = mutableListOf(),
 ) : BaseDTO<PostEntity>() {
@@ -37,7 +36,6 @@ data class PostDTO(
         lastConsoleMessageId = lastConsoleMessageId,
         isDeleted = isDeleted,
         shouldShowWebPreview = shouldShowWebPreview,
-        isCurrent = isCurrent,
         classifier = classifier,
         buttons = buttons.map { it.toEntity() }.toMutableList(),
     )

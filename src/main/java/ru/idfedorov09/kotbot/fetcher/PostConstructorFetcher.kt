@@ -616,7 +616,6 @@ class PostConstructorFetcher(
                     author = user,
                     lastConsoleMessageId = callbackMessageId,
                     shouldShowWebPreview = false,
-                    isCurrent = true,
                     classifier = classifier,
                 )
             )
