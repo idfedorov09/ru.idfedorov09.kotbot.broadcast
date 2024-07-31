@@ -7,6 +7,8 @@ import org.telegram.telegrambots.meta.api.objects.Update
 import ru.idfedorov09.kotbot.config.registry.PostClassifier
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.DEFAULT_CREATE_POST
+import ru.idfedorov09.kotbot.domain.GlobalConstants.getButtonIdParam
+import ru.idfedorov09.kotbot.domain.GlobalConstants.setButtonIdParam
 import ru.idfedorov09.kotbot.domain.dto.PostButtonDTO
 import ru.idfedorov09.kotbot.domain.dto.PostDTO
 import ru.idfedorov09.kotbot.domain.service.PostButtonService
@@ -315,9 +317,11 @@ class PostConstructorFetcher(
             CallbackDataDTO(
                 callbackData = POST_ACTION_CANCEL,
                 metaText = "Назад к конструктору",
-            ).save()
+            ).takeIf {
+                button.link != null || button.callbackData != null
+            }?.save()
         val keyboard =
-            listOf(changeButtonCaption, changeButtonLink, changeButtonCallback, removeButton, backToBc)
+            listOfNotNull(changeButtonCaption, changeButtonLink, changeButtonCallback, removeButton, backToBc)
                 .map { listOf(it.createKeyboard()) }
         val sent =
             messageSenderService.sendMessage(
@@ -346,8 +350,7 @@ class PostConstructorFetcher(
         callbackData: CallbackDataDTO,
     ) {
         val buttonId = callbackData
-            .getParams()
-            .get("buttonId")
+            .getButtonIdParam()
             ?.toLongOrNull()
             ?: return
 
@@ -684,7 +687,7 @@ class PostConstructorFetcher(
                                 callbackData = POST_CHANGE_BUTTON,
                                 metaText = it.text,
                             )
-                                .setParameters("buttonId" to it.id!!)
+                                .setButtonIdParam(it.id!!)
                                 .save()
                         },
                     )
