@@ -26,4 +26,5 @@ object GlobalConstants {
     fun CallbackDataDTO.getButtonIdParam() = callbackData.getParams().get(BUTTON_ID)
     fun CallbackDataDTO.getCurrentPage() = callbackData.getParams().get(CURRENT_PAGE)
     fun CallbackDataDTO.getClassifier() = callbackData.getParams().get(CLASSIFIER)
+    fun LastUserActionType.getClassifier() = type.getParams().get(CLASSIFIER)
 }

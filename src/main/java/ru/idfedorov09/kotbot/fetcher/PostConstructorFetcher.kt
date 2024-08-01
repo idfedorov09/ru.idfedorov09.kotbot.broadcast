@@ -1,24 +1,26 @@
 package ru.idfedorov09.kotbot.fetcher
 
 import org.springframework.stereotype.Component
+import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.objects.InputFile
 import org.telegram.telegrambots.meta.api.objects.Update
 import ru.idfedorov09.kotbot.config.registry.PostClassifier
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.DEFAULT_CREATE_POST
-import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType.PC_NAME_TYPE
 import ru.idfedorov09.kotbot.domain.GlobalConstants.getButtonIdParam
 import ru.idfedorov09.kotbot.domain.GlobalConstants.getClassifier
+import ru.idfedorov09.kotbot.domain.GlobalConstants.getPostId
 import ru.idfedorov09.kotbot.domain.GlobalConstants.setButtonIdParam
 import ru.idfedorov09.kotbot.domain.GlobalConstants.setClassifier
 import ru.idfedorov09.kotbot.domain.PostClassifiers.defaultSaveClassifier
-import ru.idfedorov09.kotbot.domain.PostClassifiers.savePostAndExitClassifier
+import ru.idfedorov09.kotbot.domain.dto.BroadcastDataDTO
 import ru.idfedorov09.kotbot.domain.dto.PostButtonDTO
 import ru.idfedorov09.kotbot.domain.dto.PostDTO
 import ru.idfedorov09.kotbot.domain.service.PostButtonService
 import ru.idfedorov09.kotbot.domain.service.PostService
 import ru.idfedorov09.kotbot.fetcher.BroadcastConstructorFetcher.Companion.BROADCAST_CREATE_NEW_POST
+import ru.idfedorov09.kotbot.fetcher.BroadcastConstructorFetcher.Companion.BROADCAST_TRY_TO_EDIT_POST
 import ru.idfedorov09.telegram.bot.base.config.registry.RegistryHolder
 import ru.idfedorov09.telegram.bot.base.domain.LastUserActionTypes
 import ru.idfedorov09.telegram.bot.base.domain.annotation.Callback
@@ -27,6 +29,7 @@ import ru.idfedorov09.telegram.bot.base.domain.annotation.InputText
 import ru.idfedorov09.telegram.bot.base.domain.dto.CallbackDataDTO
 import ru.idfedorov09.telegram.bot.base.domain.dto.UserDTO
 import ru.idfedorov09.telegram.bot.base.domain.service.MessageSenderService
+import ru.idfedorov09.telegram.bot.base.executor.Executor
 import ru.idfedorov09.telegram.bot.base.fetchers.DefaultFetcher
 import ru.idfedorov09.telegram.bot.base.util.MessageParams
 import ru.idfedorov09.telegram.bot.base.util.UpdatesUtil
@@ -44,6 +47,7 @@ class PostConstructorFetcher(
     private val messageSenderService: MessageSenderService,
     private val updatesUtil: UpdatesUtil,
     private val postButtonService: PostButtonService,
+    private val bot: Executor,
 ): DefaultFetcher() {
 
     companion object {
@@ -62,16 +66,19 @@ class PostConstructorFetcher(
         const val POST_CHANGE_BUTTON = "post_change_button"
         const val POST_TOGGLE_PREVIEW = "post_toggle_preview"
         const val POST_CHANGE_NAME = "post_change_name"
+        const val POST_TRY_TO_CLOSE_WITH_SAVE = "pc_post_try_to_close_with_save"
 
         const val PC_TEXT_TYPE = "PC_TEXT_TYPE"
         const val PC_BUTTON_CAPTION_TYPE = "PC_BUTTON_CAPTION_TYPE"
         const val PC_BUTTON_LINK_TYPE = "PC_BUTTON_LINK_TYPE"
         const val PC_BUTTON_CALLBACK_TYPE = "PC_BUTTON_CALLBACK_TYPE"
         const val PC_PHOTO_TYPE = "PC_PHOTO_TYPE"
+        const val PC_NAME_TYPE = "PC_NAME_TYPE"
 
         const val MAX_BUTTONS_COUNT = 10
         const val MAX_TEXT_SIZE_WITHOUT_PHOTO = 900
         const val MAX_BTN_TEXT_SIZE = 32
+        const val MAX_NAME_LENGTH = 35
     }
 
     @InjectData
@@ -88,28 +95,129 @@ class PostConstructorFetcher(
         user.lastUserActionType = LastUserActionTypes.DEFAULT
     }
 
-    @Callback(POST_CHANGE_NAME)
-    fun setPostName(
+    /**
+     * Метод работы с данными который заканчивает работу над постом
+     * + удаляет консоль
+     */
+    fun postFinish(
         update: Update,
         user: UserDTO,
         post: PostDTO,
-        callbackData: CallbackDataDTO,
+        broadcastDataDTO: BroadcastDataDTO,
     ): PostDTO {
-        val messageText = "<b>Конструктор постов</b>\n\nНапишите название поста"
+        deletePcConsole(update, post)
+        val newPost = post.copy(
+            isBuilt = true,
+            lastConsoleMessageId = null,
+        )
+        broadcastDataDTO.copy(
+            currentPost = null,
+        ).save().also { addToContext(it) }
+        // TODO: classifier?
+        user.lastUserActionType = LastUserActionTypes.DEFAULT
+        return newPost.save()
+    }
+
+    private fun pcSaveAndExit(
+        update: Update,
+        user: UserDTO,
+        post: PostDTO,
+        broadcastDataDTO: BroadcastDataDTO,
+    ): PostDTO {
+        if (update.hasCallbackQuery()) {
+            val callbackAnswer =
+                AnswerCallbackQuery().also {
+                    it.text = "✅ Сохранено"
+                    it.callbackQueryId = update.callbackQuery.id
+                }
+            bot.execute(callbackAnswer)
+        }
+        return postFinish(update, user, post, broadcastDataDTO)
+    }
+
+    @Callback(POST_TRY_TO_CLOSE_WITH_SAVE)
+    fun pcTryToExit(
+        update: Update,
+        user: UserDTO,
+        post: PostDTO,
+        broadcastDataDTO: BroadcastDataDTO,
+    ): PostDTO {
+        if (post.text == null && post.imageHash == null) {
+            val callbackAnswer =
+                AnswerCallbackQuery().also {
+                    it.text = "\uD83D\uDEAB В посте должна быть добавлена " +
+                            "хотя бы одна из следующих компонент: \n" +
+                            "Текст, изображение"
+                    it.callbackQueryId = update.callbackQuery.id
+                    it.showAlert = true
+                }
+            bot.execute(callbackAnswer)
+            return post
+        }
+        if (post.name == null) {
+            val callbackAnswer =
+                AnswerCallbackQuery().also {
+                    it.text = "\uD83D\uDEAB Пост должен иметь название."
+                    it.callbackQueryId = update.callbackQuery.id
+                    it.showAlert = true
+                }
+            bot.execute(callbackAnswer)
+            return post
+        }
+        return pcSaveAndExit(update, user, post, broadcastDataDTO)
+    }
+
+    @InputText(PC_NAME_TYPE)
+    fun pcChangeName(
+        update: Update,
+        user: UserDTO,
+        post: PostDTO,
+    ): PostDTO {
+        deleteUpdateMessage()
+        val newName = update.message.text.trim()
+        if (newName.length > MAX_NAME_LENGTH) {
+            return setPostNameWithHint(
+                user,
+                update,
+                post,
+                "Превышена максимальная допустимая длина названия поста " +
+                        "($MAX_NAME_LENGTH). Повторите попытку."
+            )
+        }
+        val newPost = deletePcConsole(update, post).copy(
+            name = newName,
+        )
+        return showPcConsole(update, user, newPost)
+    }
+
+    @Callback(POST_CHANGE_NAME)
+    fun setPostName(
+        user: UserDTO,
+        update: Update,
+        post: PostDTO,
+    ): PostDTO {
+        return setPostNameWithHint(user, update, post)
+    }
+
+    fun setPostNameWithHint(
+        user: UserDTO,
+        update: Update,
+        post: PostDTO,
+        hint: String = "Напишите название поста"
+    ): PostDTO {
+        val messageText = "${post.header()}\n\n${hint}"
         val newPost = deletePcConsole(update, post)
-        messageSenderService.sendMessage(
+        val sent = messageSenderService.sendMessage(
             MessageParams(
                 chatId = updatesUtil.getChatId(update)!!,
                 text = messageText,
                 parseMode = ParseMode.HTML,
             )
         )
-        val classifier = RegistryHolder
-            .getRegistry<PostClassifier>()
-            .get(callbackData.getClassifier())
-            ?: defaultSaveClassifier
-        user.lastUserActionType = PC_NAME_TYPE.setClassifier(classifier)
-        return newPost
+        user.lastUserActionType = BroadcastLastUserActionType.PC_NAME_TYPE
+        return newPost.copy(
+            lastConsoleMessageId = sent.messageId,
+        ).save()
     }
 
     @Callback(POST_CHANGE_TEXT)
@@ -121,7 +229,7 @@ class PostConstructorFetcher(
         val newPost = deletePcConsole(update, post)
         // TODO: скрытый текст??
         val msgText =
-            "*Напишите текст уведомления*\\.\n\nПравила оформления:\n" +
+            "*Напишите текст поста*\\.\n\nФорматирование:\n" +
                     "<b\\>текст</b\\> \\- жирный текст\n" +
                     "<i\\>текст</i\\> \\- выделение курсивом\n" +
                     "<u\\>текст</u\\> \\- подчеркнутый текст\n" +
@@ -212,7 +320,7 @@ class PostConstructorFetcher(
         callbackData: CallbackDataDTO,
     ): PostDTO {
         val newPost = deletePcConsole(update, post)
-        val messageText = "<b>Конструктор постов</b>\n\nВыберите дальнейшее действие"
+        val messageText = "${newPost.header()}\n\nВыберите дальнейшее действие"
         postService.sendPost(user, newPost)
 
         val keyboard = RegistryHolder
@@ -622,6 +730,47 @@ class PostConstructorFetcher(
         ).save()
     }
 
+    @Callback(BROADCAST_TRY_TO_EDIT_POST)
+    fun tryToEditPost(
+        update: Update,
+        user: UserDTO,
+        post: PostDTO?,
+        callbackData: CallbackDataDTO,
+    ) {
+        val outdated = "\uD83D\uDEAB Этот пост устарел."
+        val unavailableToEdit = "\uD83D\uDEAB Этот пост пока недоступен для редактирования."
+        if (post == null) {
+            failToTryEditPost(update, user, outdated)
+            return
+        }
+        callbackData.getPostId()?.toLongOrNull()?.let { postId ->
+            postService.findByPostId(postId) ?: run {
+                failToTryEditPost(update, user, outdated)
+                return
+            }
+        }
+        if (!post.isBuilt) {
+            failToTryEditPost(update, user, unavailableToEdit)
+            return
+        }
+        showPcConsole(update, user, post, callbackData)
+    }
+
+    private fun failToTryEditPost(
+        update: Update,
+        user: UserDTO,
+        reason: String,
+    ) {
+        val callbackAnswer =
+            AnswerCallbackQuery().also {
+                it.text = reason
+                it.callbackQueryId = update.callbackQuery.id
+            }
+        bot.execute(callbackAnswer)
+        deleteUpdateMessage()
+        user.lastUserActionType = LastUserActionTypes.DEFAULT
+    }
+
     @Callback(BROADCAST_CREATE_NEW_POST)
     fun showPcConsole(
         update: Update,
@@ -648,7 +797,8 @@ class PostConstructorFetcher(
                     classifier = classifier,
                 )
             )
-            val messageText = "<b>Конструктор постов</b>\n\nВыберите дальнейшее действие"
+            val messageText = "${currentPost.header()}\n\nВыберите дальнейшее действие"
+            val newName = CallbackDataDTO(callbackData = POST_CHANGE_NAME, metaText = "Добавить название").save()
             val newPhoto = CallbackDataDTO(callbackData = POST_CHANGE_PHOTO, metaText = "Добавить фото").save()
             val addText = CallbackDataDTO(callbackData = POST_CHANGE_TEXT, metaText = "Добавить текст").save()
             val addButton = CallbackDataDTO(callbackData = POST_ADD_BUTTON, metaText = "Добавить кнопку").save()
@@ -656,7 +806,7 @@ class PostConstructorFetcher(
             val cancelButton = CallbackDataDTO(callbackData = POST_CREATE_CANCEL, metaText = "Отмена").save()
 
             val keyboard =
-                listOfNotNull(newPhoto, addText, addButton, webPreviewButton, cancelButton)
+                listOfNotNull(newName, newPhoto, addText, addButton, webPreviewButton, cancelButton)
                     .map { listOf(it.createKeyboard()) }
             if (hasCallback) {
                 messageSenderService.editMessage(
@@ -686,6 +836,11 @@ class PostConstructorFetcher(
             }
         } else {
             currentPost = deletePcConsole(update, currentPost)
+            val nameProp =
+                CallbackDataDTO(
+                    callbackData = POST_CHANGE_NAME,
+                    metaText = currentPost.name?.let { "Изменить название" } ?: "Добавить название"
+                ).save()
             val photoProp =
                 CallbackDataDTO(
                     callbackData = POST_CHANGE_PHOTO,
@@ -703,6 +858,7 @@ class PostConstructorFetcher(
 
             val keyboardList =
                 listOfNotNull(
+                    nameProp,
                     photoProp,
                     textProp,
                     addButton,
@@ -723,7 +879,9 @@ class PostConstructorFetcher(
             keyboardList.add(cancelButton)
             val keyboard =
                 keyboardList.apply {
-                    if (currentPost!!.imageHash == null && currentPost!!.text == null) {
+                    if (currentPost!!.name == null
+                        || currentPost!!.imageHash == null
+                        && currentPost!!.text == null) {
                         remove(previewButton)
                     }
                     if (currentPost!!.buttons.size >= MAX_BUTTONS_COUNT) {
@@ -734,7 +892,7 @@ class PostConstructorFetcher(
                 }
             val text =
                 currentPost.run {
-                    val title = "<b>Конструктор постов</b>\n\n"
+                    val title = header() + "\n\n"
                     val text = text?.let { "Текст:\n${text}\n\n" } ?: ""
                     val end = "Выберите дальнейшее действие"
                     title + text + end
@@ -784,7 +942,13 @@ class PostConstructorFetcher(
             }.onSuccess {
                 currentPost = currentPost!!.copy(
                     lastConsoleMessageId = it.messageId,
+                    isBuilt = false,
                 )
+                callbackData?.getClassifier()?.let { classifier ->
+                    currentPost = currentPost!!.copy(
+                        classifier = classifier,
+                    )
+                }
             }
         }
         user.lastUserActionType = LastUserActionTypes.DEFAULT
@@ -798,4 +962,9 @@ class PostConstructorFetcher(
         val text = "$smile Превью веб-страницы $state"
         return CallbackDataDTO(callbackData = POST_TOGGLE_PREVIEW, metaText = text).save()
     }
+
+    private fun PostDTO.header() =
+        name
+            ?.let{ "<b>Конструктор постов [<code>$it</code>]</b>" }
+            ?: "<b>Конструктор постов</b>"
 }

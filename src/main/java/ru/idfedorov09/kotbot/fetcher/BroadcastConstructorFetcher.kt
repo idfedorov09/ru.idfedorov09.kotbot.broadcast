@@ -4,14 +4,12 @@ import org.springframework.stereotype.Component
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery
 import org.telegram.telegrambots.meta.api.methods.ParseMode
 import org.telegram.telegrambots.meta.api.objects.Update
-import ru.idfedorov09.kotbot.config.registry.PostClassifier
 import ru.idfedorov09.kotbot.domain.BroadcastLastUserActionType
 import ru.idfedorov09.kotbot.domain.GlobalConstants.getCurrentPage
 import ru.idfedorov09.kotbot.domain.GlobalConstants.setClassifier
 import ru.idfedorov09.kotbot.domain.GlobalConstants.setCurrentPage
 import ru.idfedorov09.kotbot.domain.GlobalConstants.setPostId
-import ru.idfedorov09.kotbot.domain.PostClassifiers.choosePost
-import ru.idfedorov09.kotbot.domain.PostClassifiers.createNewPost
+import ru.idfedorov09.kotbot.domain.PostClassifiers.lastBroadcastStepClassifier
 import ru.idfedorov09.kotbot.domain.dto.BroadcastDataDTO
 import ru.idfedorov09.kotbot.domain.dto.PostDTO
 import ru.idfedorov09.kotbot.domain.service.PostService
@@ -38,6 +36,8 @@ open class BroadcastConstructorFetcher(
     companion object {
         const val BROADCAST_SELECT_POST = "bc_select_existing_post"
         const val BROADCAST_CREATE_NEW_POST = "bc_create_new_post"
+        const val BROADCAST_TRY_TO_EDIT_POST = "bc_try_to_edit_post"
+        const val BROADCAST_BACK_TO_HANDLER_MENU = "bc_back_to_handler"
         const val BROADCAST_CREATE_CANCEL = "bc_create_cancel" // TODO: create
         const val BROADCAST_SEND_NOW = "bc_send_post_now" // TODO: create
         const val BROADCAST_SCHEDULE_SEND = "bc_schedule_send" // TODO: create
@@ -55,11 +55,11 @@ open class BroadcastConstructorFetcher(
         val selectExistingPostButton = CallbackDataDTO(
             callbackData = BROADCAST_SELECT_POST,
             metaText = "Выбрать пост"
-        ).setClassifier(choosePost).save()
+        ).setClassifier(lastBroadcastStepClassifier).save()
         val createNewPostButton = CallbackDataDTO(
             callbackData = BROADCAST_CREATE_NEW_POST,
             metaText = "Создать новый пост"
-        ).setClassifier(createNewPost).save()
+        ).setClassifier(lastBroadcastStepClassifier).save()
         val cancelButton = CallbackDataDTO(
             callbackData = BROADCAST_CREATE_CANCEL,
             metaText = "Отмена"
@@ -69,6 +69,7 @@ open class BroadcastConstructorFetcher(
                 .map { listOf(it.createKeyboard()) }
         val messageText = "<b>Конструктор рассылки</b>\n\nВыберите дальнейшее действие"
 
+        deleteUpdateMessage()
         messageSenderService.sendMessage(
             MessageParams(
                 chatId = chatId,
@@ -106,9 +107,12 @@ open class BroadcastConstructorFetcher(
         ).setCurrentPage(currentPage - 1).takeIf { currentPage > 0 }?.save()
         val nextButton = CallbackDataDTO(
             callbackData = BROADCAST_SELECT_POST,
-            metaText = "◀\uFE0F"
-        ).setCurrentPage(currentPage - 1).takeIf { currentPage < pagesCount }?.save()
-
+            metaText = "▶\uFE0F"
+        ).setCurrentPage(currentPage + 1).takeIf { currentPage < pagesCount }?.save()
+        val backToMenu = CallbackDataDTO(
+            callbackData = BROADCAST_BACK_TO_HANDLER_MENU,
+            metaText = "Назад",
+        ).save()
         val posts = postService
             .findAvailablePostsOnPage(currentPage)
             .filter { it.name != null }
@@ -117,7 +121,7 @@ open class BroadcastConstructorFetcher(
                     callbackData = BROADCAST_CREATE_NEW_POST, // TODO: rename?
                     metaText = it.name,
                 )
-                    .setClassifier(choosePost)
+                    .setClassifier(lastBroadcastStepClassifier)
                     .setPostId(it.id!!)
                     .save()
             }
@@ -129,11 +133,16 @@ open class BroadcastConstructorFetcher(
                     backButton?.createKeyboard(),
                     nextButton?.createKeyboard(),
                 )
+            ).plusElement(
+                listOf(
+                    backToMenu.createKeyboard()
+                )
             )
 
-        messageSenderService.sendMessage(
+        messageSenderService.editMessage(
             MessageParams(
                 chatId = chatId,
+                messageId = update.callbackQuery.message.messageId,
                 text = messageText,
                 parseMode = ParseMode.HTML,
                 replyMarkup = createKeyboard(keyboard),
@@ -150,12 +159,14 @@ open class BroadcastConstructorFetcher(
         broadcastDataDTO: BroadcastDataDTO,
         post: PostDTO,
     ) {
-        val callbackAnswer =
-            AnswerCallbackQuery().also {
-                it.text = "✅ Сохранено"
-                it.callbackQueryId = update.callbackQuery.id
-            }
-        bot.execute(callbackAnswer)
+        if (update.hasCallbackQuery()) {
+            val callbackAnswer =
+                AnswerCallbackQuery().also {
+                    it.text = "✅ Сохранено"
+                    it.callbackQueryId = update.callbackQuery.id
+                }
+            bot.execute(callbackAnswer)
+        }
 
         val chatId = updatesUtil.getChatId(update)!!
         post.lastConsoleMessageId?.let {
@@ -166,11 +177,11 @@ open class BroadcastConstructorFetcher(
                 )
             )
         }
-        val newPost = post.copy(
+        post.copy(
             isBuilt = true,
             lastConsoleMessageId = null,
         ).save().also { addToContext(it) }
-        val newBroadcastDataDTO = broadcastDataDTO.copy(
+        broadcastDataDTO.copy(
             currentPost = null,
         ).save().also { addToContext(it) }
         user.lastUserActionType = LastUserActionTypes.DEFAULT

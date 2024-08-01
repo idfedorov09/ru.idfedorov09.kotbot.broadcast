@@ -12,7 +12,7 @@ data class PostClassifier(
         Update,
         PostDTO,
         UserDTO,
-        CallbackDataDTO
+        CallbackDataDTO?,
     ) -> List<List<CallbackDataDTO>>,
 ): RegistryModel(PostClassifier::class, type) {
     init { registerModel() }

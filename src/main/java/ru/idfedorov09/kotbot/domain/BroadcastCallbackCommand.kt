@@ -84,4 +84,8 @@ object BroadcastCallbackCommand {
         command = "post_change_name",
         description = "Ввести/изменить название поста (используется также при Сохранить и выйти)",
     )
+    val POST_TRY_TO_CLOSE_WITH_SAVE = CallbackCommand(
+        command = "pc_post_try_to_close_with_save",
+        description = "Попытка выхода из меню редактирования с сохранением поста",
+    )
 }
