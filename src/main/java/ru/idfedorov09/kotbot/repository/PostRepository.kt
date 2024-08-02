@@ -26,15 +26,31 @@ interface PostRepository<T: PostEntity> : JpaRepository<T, Long> {
         """
             SELECT p 
             FROM PostEntity p 
-            LEFT JOIN FETCH p.buttons 
+            LEFT JOIN FETCH p.buttons b
             WHERE 1 = 1
                 AND p.author.id = :postAuthorId
                 AND p.isDeleted = false 
                 AND p.isBuilt = false
+                AND b.isDeleted = false
         """,
         nativeQuery = false
     )
     fun findCurrentPostByAuthorId(postAuthorId: Long): PostEntity?
+
+    @Query(
+        """
+            SELECT p 
+            FROM PostEntity p 
+            LEFT JOIN FETCH p.buttons b
+            WHERE 1 = 1
+                AND p.id = :postId
+                AND p.isDeleted = false 
+                AND p.isBuilt = true
+                AND b.isDeleted = false
+        """,
+        nativeQuery = false
+    )
+    fun findAvailablePostById(postId: Long): PostEntity?
 
     /**
      * pageNum - номер страницы, нумеруется с нуля

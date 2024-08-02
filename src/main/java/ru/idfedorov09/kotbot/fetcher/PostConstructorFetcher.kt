@@ -12,11 +12,10 @@ import ru.idfedorov09.kotbot.domain.GlobalConstants.getButtonIdParam
 import ru.idfedorov09.kotbot.domain.GlobalConstants.getClassifier
 import ru.idfedorov09.kotbot.domain.GlobalConstants.getPostId
 import ru.idfedorov09.kotbot.domain.GlobalConstants.setButtonIdParam
-import ru.idfedorov09.kotbot.domain.GlobalConstants.setClassifier
-import ru.idfedorov09.kotbot.domain.PostClassifiers.defaultSaveClassifier
 import ru.idfedorov09.kotbot.domain.dto.BroadcastDataDTO
 import ru.idfedorov09.kotbot.domain.dto.PostButtonDTO
 import ru.idfedorov09.kotbot.domain.dto.PostDTO
+import ru.idfedorov09.kotbot.domain.service.BroadcastDataService
 import ru.idfedorov09.kotbot.domain.service.PostButtonService
 import ru.idfedorov09.kotbot.domain.service.PostService
 import ru.idfedorov09.kotbot.fetcher.BroadcastConstructorFetcher.Companion.BROADCAST_CREATE_NEW_POST
@@ -48,6 +47,7 @@ class PostConstructorFetcher(
     private val updatesUtil: UpdatesUtil,
     private val postButtonService: PostButtonService,
     private val bot: Executor,
+    private val broadcastDataService: BroadcastDataService,
 ): DefaultFetcher() {
 
     companion object {
@@ -503,7 +503,9 @@ class PostConstructorFetcher(
         user: UserDTO,
         post: PostDTO,
     ) {
-        postButtonService.deleteLastModifiedButtonByUserId(user.id!!)
+        post.getLastModifiedButton().apply {
+            isDeleted = true
+        }
         showPcConsole(update, user, post)
     }
 
@@ -688,7 +690,7 @@ class PostConstructorFetcher(
             CallbackDataDTO(
                 callbackData =
                 if (backToDefaultConsole) {
-                    POST_ACTION_CANCEL
+                    POST_DELETE_BUTTON
                 } else {
                     POST_BUTTON_SETTINGS_CONSOLE
                 },
@@ -777,6 +779,7 @@ class PostConstructorFetcher(
         user: UserDTO,
         post: PostDTO?,
         callbackData: CallbackDataDTO? = null,
+        broadcastDataDTO: BroadcastDataDTO? = null,
     ): PostDTO {
         val hasCallback = update.hasCallbackQuery()
         val callbackMessageId =
@@ -797,6 +800,9 @@ class PostConstructorFetcher(
                     classifier = classifier,
                 )
             )
+            broadcastDataDTO?.copy(
+                currentPost = currentPost,
+            )?.save()?.also { addToContext(it) }
             val messageText = "${currentPost.header()}\n\nВыберите дальнейшее действие"
             val newName = CallbackDataDTO(callbackData = POST_CHANGE_NAME, metaText = "Добавить название").save()
             val newPhoto = CallbackDataDTO(callbackData = POST_CHANGE_PHOTO, metaText = "Добавить фото").save()

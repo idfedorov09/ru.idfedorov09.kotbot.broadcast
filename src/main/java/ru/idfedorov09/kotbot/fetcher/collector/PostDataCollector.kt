@@ -32,7 +32,7 @@ class PostDataCollector(
         val post = callbackDataDTO
             ?.getPostId()
             ?.toLongOrNull()
-            ?.let { postService.findByPostId(it) }
+            ?.let { postService.findAvailablePostById(it) }
             ?: postService.findCurrentPostByAuthorId(userId)
         addToContext(
             broadcastData.copy(currentPost = post).save()

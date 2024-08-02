@@ -65,6 +65,7 @@ open class PostService(
         )
     }
 
+    open fun findAvailablePostById(postId: Long) = postRepository.findAvailablePostById(postId)?.toDTO()
     open fun findAvailablePostsOnPage(pageNum: Int) = postRepository.findAvailablePostsOnPage(pageNum)
     open fun lastPageNum() = postRepository.lastPageNum()
 
