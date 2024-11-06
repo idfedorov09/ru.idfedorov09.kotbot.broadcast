@@ -47,6 +47,7 @@ open class BroadcastConstructorFetcher(
     fun doFetch() {}
 
     @Command("/create_broadcast")
+    @Callback(BROADCAST_BACK_TO_HANDLER_MENU)
     fun broadcastEntry(
         update: Update,
         user: UserDTO,
