@@ -39,7 +39,7 @@ open class BroadcastConstructorFetcher(
         const val BROADCAST_TRY_TO_EDIT_POST = "bc_try_to_edit_post"
         const val BROADCAST_GET_TARGET_POST = "bc_get_target_post"
         const val BROADCAST_BACK_TO_HANDLER_MENU = "bc_back_to_handler"
-        const val BROADCAST_CREATE_CANCEL = "bc_create_cancel" // TODO: create
+        const val BROADCAST_CREATION_CANCEL = "bc_creation_cancel"
         const val BROADCAST_SEND_NOW = "bc_send_post_now" // TODO: create
         const val BROADCAST_SCHEDULE_SEND = "bc_schedule_send" // TODO: create
     }
@@ -63,7 +63,7 @@ open class BroadcastConstructorFetcher(
             metaText = "Создать новый пост"
         ).setClassifier(lastBroadcastStepClassifier).save()
         val cancelButton = CallbackDataDTO(
-            callbackData = BROADCAST_CREATE_CANCEL,
+            callbackData = BROADCAST_CREATION_CANCEL,
             metaText = "Отмена"
         ).save()
         val keyboard =
@@ -183,6 +183,18 @@ open class BroadcastConstructorFetcher(
             isBuilt = true,
             lastConsoleMessageId = null,
         ).save().also { addToContext(it) }
+        broadcastDataDTO.copy(
+            currentPost = null,
+        ).save().also { addToContext(it) }
+        user.lastUserActionType = LastUserActionTypes.DEFAULT
+    }
+
+    @Callback(BROADCAST_CREATION_CANCEL)
+    suspend fun broadcastCreationCancel(
+        user: UserDTO,
+        broadcastDataDTO: BroadcastDataDTO,
+    ) {
+        deleteUpdateMessage()
         broadcastDataDTO.copy(
             currentPost = null,
         ).save().also { addToContext(it) }
