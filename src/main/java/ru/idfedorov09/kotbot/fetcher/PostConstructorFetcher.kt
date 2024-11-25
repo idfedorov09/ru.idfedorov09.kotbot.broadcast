@@ -99,7 +99,7 @@ class PostConstructorFetcher(
      * Метод работы с данными который заканчивает работу над постом
      * + удаляет консоль
      */
-    fun postFinish(
+    suspend fun postFinish(
         update: Update,
         user: UserDTO,
         post: PostDTO,
@@ -118,7 +118,7 @@ class PostConstructorFetcher(
         return newPost.save()
     }
 
-    private fun pcSaveAndExit(
+    private suspend fun pcSaveAndExit(
         update: Update,
         user: UserDTO,
         post: PostDTO,
@@ -136,7 +136,7 @@ class PostConstructorFetcher(
     }
 
     @Callback(POST_TRY_TO_CLOSE_WITH_SAVE)
-    fun pcTryToExit(
+    suspend fun pcTryToExit(
         update: Update,
         user: UserDTO,
         post: PostDTO,
@@ -168,7 +168,7 @@ class PostConstructorFetcher(
     }
 
     @InputText(PC_NAME_TYPE)
-    fun pcChangeName(
+    suspend fun pcChangeName(
         update: Update,
         user: UserDTO,
         post: PostDTO,
@@ -297,7 +297,7 @@ class PostConstructorFetcher(
     }
 
     @Callback(POST_DELETE_PHOTO)
-    fun pcDeletePhoto(update: Update, post: PostDTO, user: UserDTO): PostDTO {
+    suspend fun pcDeletePhoto(update: Update, post: PostDTO, user: UserDTO): PostDTO {
         val newPost = post.copy(
             imageHash = null,
         )
@@ -307,7 +307,7 @@ class PostConstructorFetcher(
     }
 
     @Callback(POST_ACTION_CANCEL)
-    fun pcCancelAction(update: Update, post: PostDTO, user: UserDTO) {
+    suspend fun pcCancelAction(update: Update, post: PostDTO, user: UserDTO) {
         user.lastUserActionType = DEFAULT_CREATE_POST
         showPcConsole(update, user, post)
     }
@@ -498,7 +498,7 @@ class PostConstructorFetcher(
     }
 
     @Callback(POST_DELETE_BUTTON)
-    fun deleteButton(
+    suspend fun deleteButton(
         update: Update,
         user: UserDTO,
         post: PostDTO,
@@ -538,7 +538,7 @@ class PostConstructorFetcher(
     }
 
     @Callback(POST_TOGGLE_PREVIEW)
-    fun pcToggleWebPreview(
+    suspend fun pcToggleWebPreview(
         update: Update,
         user: UserDTO,
         post: PostDTO,
@@ -551,7 +551,7 @@ class PostConstructorFetcher(
     }
 
     @InputText(PC_TEXT_TYPE)
-    fun changeText(
+    suspend fun changeText(
         update: Update,
         user: UserDTO,
         post: PostDTO,
@@ -580,7 +580,7 @@ class PostConstructorFetcher(
     }
 
     @InputText(PC_BUTTON_CAPTION_TYPE)
-    fun changeButtonCaption(
+    suspend fun changeButtonCaption(
         update: Update,
         post: PostDTO,
         user: UserDTO,
@@ -616,7 +616,7 @@ class PostConstructorFetcher(
     }
 
     @InputText(PC_BUTTON_LINK_TYPE)
-    fun changeButtonLink(
+    suspend fun changeButtonLink(
         update: Update,
         post: PostDTO,
         user: UserDTO,
@@ -632,7 +632,7 @@ class PostConstructorFetcher(
     }
 
     @InputText(PC_BUTTON_CALLBACK_TYPE)
-    fun changeButtonCallback(
+    suspend fun changeButtonCallback(
         update: Update,
         post: PostDTO,
         user: UserDTO,
@@ -651,7 +651,7 @@ class PostConstructorFetcher(
     }
 
     @InputPhoto(PC_PHOTO_TYPE)
-    fun changePhoto(
+    suspend fun changePhoto(
         update: Update,
         post: PostDTO,
         user: UserDTO,
@@ -733,7 +733,7 @@ class PostConstructorFetcher(
     }
 
     @Callback(BROADCAST_TRY_TO_EDIT_POST)
-    fun tryToEditPost(
+    suspend fun tryToEditPost(
         update: Update,
         user: UserDTO,
         post: PostDTO?,
@@ -758,7 +758,7 @@ class PostConstructorFetcher(
         showPcConsole(update, user, post, callbackData)
     }
 
-    private fun failToTryEditPost(
+    private suspend fun failToTryEditPost(
         update: Update,
         user: UserDTO,
         reason: String,
@@ -774,7 +774,7 @@ class PostConstructorFetcher(
     }
 
     @Callback(BROADCAST_CREATE_NEW_POST)
-    fun showPcConsole(
+    suspend fun showPcConsole(
         update: Update,
         user: UserDTO,
         post: PostDTO?,

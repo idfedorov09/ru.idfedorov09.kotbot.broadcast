@@ -48,7 +48,7 @@ open class BroadcastConstructorFetcher(
 
     @Command("/create_broadcast")
     @Callback(BROADCAST_BACK_TO_HANDLER_MENU)
-    fun broadcastEntry(
+    suspend fun broadcastEntry(
         update: Update,
         user: UserDTO,
     ) {
@@ -154,7 +154,7 @@ open class BroadcastConstructorFetcher(
 
     // TODO
 //    @Callback(POST_BROADCAST_SAVE_POST_AND_EXIT)
-    fun savePostAndExit(
+    suspend fun savePostAndExit(
         update: Update,
         user: UserDTO,
         broadcastDataDTO: BroadcastDataDTO,

@@ -33,9 +33,9 @@ dependencies {
 
     implementation 'redis.clients:jedis:5.1.1'
 
-    implementation 'org.telegram:telegrambots:6.7.0'
+    implementation 'org.telegram:telegrambots:6.9.7.1'
 
-    implementation 'com.github.sno-mephi:flow-library:2.2.2-stable'
+    implementation 'com.github.sno-mephi:flow-library:2.3.2'
     implementation project(':ru.idfedorov09.kotbot')
 }
 

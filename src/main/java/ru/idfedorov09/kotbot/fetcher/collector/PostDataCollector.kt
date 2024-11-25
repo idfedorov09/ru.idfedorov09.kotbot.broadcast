@@ -18,7 +18,7 @@ class PostDataCollector(
 ) : DefaultFetcher() {
 
     @InjectData
-    fun doFetch(
+    suspend fun doFetch(
         user: UserDTO?,
         callbackDataDTO: CallbackDataDTO?,
         broadcastDataDTO: BroadcastDataDTO?,
