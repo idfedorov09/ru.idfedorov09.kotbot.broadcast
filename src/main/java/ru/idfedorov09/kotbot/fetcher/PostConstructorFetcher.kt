@@ -19,6 +19,7 @@ import ru.idfedorov09.kotbot.domain.service.BroadcastDataService
 import ru.idfedorov09.kotbot.domain.service.PostButtonService
 import ru.idfedorov09.kotbot.domain.service.PostService
 import ru.idfedorov09.kotbot.fetcher.BroadcastConstructorFetcher.Companion.BROADCAST_CREATE_NEW_POST
+import ru.idfedorov09.kotbot.fetcher.BroadcastConstructorFetcher.Companion.BROADCAST_GET_TARGET_POST
 import ru.idfedorov09.kotbot.fetcher.BroadcastConstructorFetcher.Companion.BROADCAST_TRY_TO_EDIT_POST
 import ru.idfedorov09.telegram.bot.base.config.registry.RegistryHolder
 import ru.idfedorov09.telegram.bot.base.domain.LastUserActionTypes
@@ -186,7 +187,7 @@ class PostConstructorFetcher(
         }
         val newPost = deletePcConsole(update, post).copy(
             name = newName,
-        )
+        ).save()
         return showPcConsole(update, user, newPost)
     }
 
@@ -771,6 +772,27 @@ class PostConstructorFetcher(
         bot.execute(callbackAnswer)
         deleteUpdateMessage()
         user.lastUserActionType = LastUserActionTypes.DEFAULT
+    }
+
+    @Callback(BROADCAST_GET_TARGET_POST)
+    suspend fun showTargetPost(
+        update: Update,
+        user: UserDTO,
+        callbackData: CallbackDataDTO,
+        broadcastDataDTO: BroadcastDataDTO? = null,
+    ): PostDTO {
+        val currentPost = postService.findByPostId(callbackData.getPostId()!!.toLong())
+        broadcastDataDTO?.copy(
+            currentPost = currentPost,
+        )?.save()?.also { addToContext(it) }
+        deleteUpdateMessage()
+        return showPcConsole(
+            update,
+            user,
+            currentPost,
+            callbackData,
+            broadcastDataDTO,
+        )
     }
 
     @Callback(BROADCAST_CREATE_NEW_POST)

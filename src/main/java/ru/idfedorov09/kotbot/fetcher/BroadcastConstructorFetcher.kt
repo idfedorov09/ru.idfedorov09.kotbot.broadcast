@@ -37,6 +37,7 @@ open class BroadcastConstructorFetcher(
         const val BROADCAST_SELECT_POST = "bc_select_existing_post"
         const val BROADCAST_CREATE_NEW_POST = "bc_create_new_post"
         const val BROADCAST_TRY_TO_EDIT_POST = "bc_try_to_edit_post"
+        const val BROADCAST_GET_TARGET_POST = "bc_get_target_post"
         const val BROADCAST_BACK_TO_HANDLER_MENU = "bc_back_to_handler"
         const val BROADCAST_CREATE_CANCEL = "bc_create_cancel" // TODO: create
         const val BROADCAST_SEND_NOW = "bc_send_post_now" // TODO: create
@@ -119,7 +120,7 @@ open class BroadcastConstructorFetcher(
             .filter { it.name != null }
             .map {
                 CallbackDataDTO(
-                    callbackData = BROADCAST_CREATE_NEW_POST, // TODO: rename?
+                    callbackData = BROADCAST_GET_TARGET_POST,
                     metaText = it.name,
                 )
                     .setClassifier(lastBroadcastStepClassifier)

@@ -68,6 +68,10 @@ object BroadcastCallbackCommand {
         command = "bc_create_new_post",
         description = "Создать новый пост",
     )
+    val BROADCAST_GET_TARGET_POST = CallbackCommand(
+        command = "bc_get_target_post",
+        description = "Выбор конкретного поста для редактирования и прочего",
+    )
     val BROADCAST_CREATE_CANCEL = CallbackCommand(
         command = "bc_create_cancel",
         description = "Отмена создания рассылки",
