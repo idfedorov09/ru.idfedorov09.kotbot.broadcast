@@ -22,6 +22,13 @@ open class CategoryEntity(
     // TODO: интеграция с регистрацией / авторизацией
     @Column(name = "is_setup_by_default")
     open var isSetupByDefault: Boolean = false,
+    /** флаг создания категории **/
+    @Column(name = "is_built")
+    open var isBuilt: Boolean = false,
+    /** удалена ли эта категория **/
+    /** true в случае если юзер отменяет создание категории / удаляет ее **/
+    @Column(name = "is_deleted")
+    open var isDeleted: Boolean = false,
     /** текущий редактор; null если никто не редактирует **/
     @OneToOne(cascade = [CascadeType.ALL])
     @JoinColumn(name = "current_editor_id", referencedColumnName = "user_id")

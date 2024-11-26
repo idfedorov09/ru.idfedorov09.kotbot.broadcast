@@ -92,4 +92,21 @@ object BroadcastCallbackCommand {
         command = "pc_post_try_to_close_with_save",
         description = "Попытка выхода из меню редактирования с сохранением поста",
     )
+
+    val CATEGORY_SELECT_EXIST = CallbackCommand(
+        command = "category_select_exist",
+        description = "Выбор категории из списка для дальнейшего редактирования/удаления",
+    )
+    val CATEGORY_GET_TARGET = CallbackCommand(
+        command = "category_get_target",
+        description = "Выбор конкретной категории для редактирования и прочего",
+    )
+    val CATEGORY_CREATE_NEW = CallbackCommand(
+        command = "category_create_new",
+        description = "Создать новую категорию",
+    )
+    val CATEGORY_CREATE_CANCEL = CallbackCommand(
+        command = "category_create_cancel",
+        description = "Отмена создания категории",
+    )
 }

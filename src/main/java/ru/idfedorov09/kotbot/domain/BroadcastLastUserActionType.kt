@@ -35,4 +35,13 @@ object BroadcastLastUserActionType {
         type = "PC_NAME_TYPE",
         description = "Ввод названия поста"
     )
+
+    val CAT_NAME_TYPE = LastUserActionType(
+        type = "CAT_NAME_TYPE",
+        description = "Ввод названия категории"
+    )
+    val CAT_DESCRIPTION_TYPE = LastUserActionType(
+        type = "CAT_DESCRIPTION_TYPE",
+        description = "Ввод описания категории"
+    )
 }

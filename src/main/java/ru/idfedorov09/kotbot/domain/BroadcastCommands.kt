@@ -9,4 +9,10 @@ object BroadcastCommands {
         description = "Создает рассылку",
         showInHelp = true,
     )
+    val CATEGORY_COMMAND = TextCommand(
+        command = "/manage_categories",
+        // TODO: allowed roles
+        description = "Управление категориями",
+        showInHelp = true,
+    )
 }

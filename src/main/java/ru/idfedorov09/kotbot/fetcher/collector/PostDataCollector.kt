@@ -5,6 +5,7 @@ import ru.idfedorov09.kotbot.domain.GlobalConstants.getPostId
 import ru.idfedorov09.kotbot.domain.dto.BroadcastDataDTO
 import ru.idfedorov09.kotbot.domain.dto.PostDTO
 import ru.idfedorov09.kotbot.domain.service.BroadcastDataService
+import ru.idfedorov09.kotbot.domain.service.CategoryService
 import ru.idfedorov09.kotbot.domain.service.PostService
 import ru.idfedorov09.telegram.bot.base.domain.dto.CallbackDataDTO
 import ru.idfedorov09.telegram.bot.base.domain.dto.UserDTO
@@ -15,6 +16,7 @@ import ru.mephi.sno.libs.flow.belly.InjectData
 class PostDataCollector(
     private val postService: PostService,
     private val broadcastDataService: BroadcastDataService,
+    private val categoryService: CategoryService,
 ) : DefaultFetcher() {
 
     @InjectData
@@ -24,6 +26,11 @@ class PostDataCollector(
         broadcastDataDTO: BroadcastDataDTO?,
     ): PostDTO? {
         val userId = user?.id ?: return null
+
+        addToContext(
+            categoryService.getCategoryByCurrentEditorId(userId)
+        )
+
         val broadcastData = broadcastDataDTO
             ?: broadcastDataService.getBroadcastDataByUserId(user.id!!)
             ?: BroadcastDataDTO(user = user).save()
@@ -37,6 +44,7 @@ class PostDataCollector(
         addToContext(
             broadcastData.copy(currentPost = post).save()
         )
+
         return post
     }
 }
